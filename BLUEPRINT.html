@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>M&amp;A Training Hub — System Blueprint · Aug 3 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0a2540; --navy-2:#0e3a66; --navy-deep:#06192e;
+    --blue:#1d6fc2; --blue-600:#155a9f; --blue-soft:#e9f1fa;
+    --orange:#d9822b; --orange-soft:#fdf2e4; --orange-ink:#a35d12;
+    --green:#1f8a4c; --green-soft:#e9f6ee; --green-ink:#157a42;
+    --gold:#e8b32c; --err:#c0392b;
+    --ink:#16222f; --muted:#56697a; --steel:#5b7185;
+    --line:#d9e2ec; --bg:#f3f6fa; --white:#fff;
+    --display:"Saira",system-ui,sans-serif;
+    --body:"Barlow",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+    --shadow:0 10px 30px rgba(10,37,64,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{width:min(1180px,92vw);margin:0 auto}
+
+  /* ---------- masthead ---------- */
+  header.top{background:linear-gradient(135deg,var(--navy-deep),var(--navy) 55%,var(--navy-2));color:#fff;position:relative;overflow:hidden}
+  header.top::after{content:"";position:absolute;inset:0;
+    background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 26px);
+    -webkit-mask-image:linear-gradient(105deg,#000 30%,transparent 78%);mask-image:linear-gradient(105deg,#000 30%,transparent 78%)}
+  .top-in{position:relative;z-index:1;padding:48px 0 42px}
+  .eyebrow{font-family:var(--display);font-weight:700;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;color:#6fb0ee}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,4.6vw,3.1rem);line-height:1.04;margin:10px 0 12px}
+  .sub{color:#c7d8e8;font-size:1.05rem;max-width:70ch}
+  .stamp{display:flex;gap:26px;flex-wrap:wrap;margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.16)}
+  .stamp div b{display:block;font-family:var(--display);font-weight:800;font-size:1.5rem;line-height:1.1}
+  .stamp div span{font-family:var(--display);font-weight:600;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:#9fb6cc}
+
+  /* ---------- nav ---------- */
+  nav.toc{position:sticky;top:0;z-index:20;background:var(--navy);border-bottom:3px solid var(--blue)}
+  nav.toc ul{display:flex;gap:2px;list-style:none;overflow-x:auto;padding:0}
+  nav.toc a{display:block;padding:13px 16px;color:#c7d8e8;text-decoration:none;font-family:var(--display);font-weight:600;font-size:.82rem;letter-spacing:.03em;white-space:nowrap;border-bottom:3px solid transparent;margin-bottom:-3px}
+  nav.toc a:hover{color:#fff;background:rgba(255,255,255,.07);border-bottom-color:var(--blue)}
+
+  /* ---------- sections ---------- */
+  section{padding:52px 0 8px}
+  h2{font-family:var(--display);font-weight:800;font-size:clamp(1.45rem,2.6vw,2rem);color:var(--navy);position:relative;padding-left:18px;margin-bottom:8px}
+  h2::before{content:"";position:absolute;left:0;top:.16em;bottom:.16em;width:6px;background:var(--blue)}
+  h2 small{display:block;font-family:var(--body);font-weight:500;font-size:.9rem;color:var(--muted);letter-spacing:0;text-transform:none;margin-top:6px}
+  h3{font-family:var(--display);font-weight:800;font-size:1.06rem;color:var(--navy);margin:26px 0 10px}
+  p.lead{max-width:78ch;color:var(--ink);margin-bottom:6px}
+  .note{background:var(--blue-soft);border-left:4px solid var(--blue);padding:12px 16px;margin:16px 0;font-size:.94rem}
+  .warn{background:#fff8e6;border-left:4px solid var(--gold);padding:12px 16px;margin:16px 0;font-size:.94rem}
+  .danger{background:#fdf3f3;border-left:4px solid var(--err);padding:12px 16px;margin:16px 0;font-size:.94rem}
+  code{font-family:var(--mono);font-size:.86em;background:#eef3f8;border:1px solid var(--line);border-radius:3px;padding:1px 5px;color:var(--navy)}
+
+  /* ---------- cards ---------- */
+  .grid{display:grid;gap:16px;margin-top:18px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .card{background:var(--white);border:1px solid var(--line);box-shadow:var(--shadow);padding:20px 22px}
+  .card.blue{border-top:5px solid var(--blue)}
+  .card.orange{border-top:5px solid var(--orange)}
+  .card.green{border-top:5px solid var(--green)}
+  .card h4{font-family:var(--display);font-weight:800;font-size:1.12rem;color:var(--navy);display:flex;align-items:center;gap:9px}
+  .dot{width:11px;height:11px;border-radius:2px;flex:none}
+  .dot.blue{background:var(--blue)} .dot.orange{background:var(--orange)} .dot.green{background:var(--green)}
+  .card .who{font-size:.82rem;color:var(--muted);margin:4px 0 12px}
+  .card ul{list-style:none;font-size:.92rem}
+  .card ul li{padding:5px 0 5px 16px;position:relative;border-bottom:1px solid #eef3f8}
+  .card ul li:last-child{border-bottom:0}
+  .card ul li::before{content:"";position:absolute;left:0;top:.85em;width:5px;height:5px;background:var(--steel)}
+  .pill{display:inline-block;font-family:var(--display);font-weight:700;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+  .pill.open{background:var(--blue-soft);color:var(--blue-600)}
+  .pill.code{background:var(--orange-soft);color:var(--orange-ink)}
+
+  /* ---------- flow map ---------- */
+  .map{background:var(--navy-deep);color:#c7d8e8;padding:26px;overflow-x:auto;margin-top:18px;border:1px solid var(--navy-2)}
+  .map pre{font-family:var(--mono);font-size:.8rem;line-height:1.75;white-space:pre;color:#c7d8e8}
+  .map .hl{color:#6fb0ee;font-weight:600}
+  .map .hg{color:#7fe0a6;font-weight:600}
+  .map .ho{color:#ffc078;font-weight:600}
+  .map .hm{color:#7f97ae}
+
+  /* ---------- tables ---------- */
+  .tw{overflow-x:auto;border:1px solid var(--line);background:var(--white);margin-top:16px;box-shadow:var(--shadow)}
+  table{width:100%;border-collapse:collapse;min-width:680px}
+  th{font-family:var(--display);font-weight:700;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:11px 13px;background:#f3f7fb;border-bottom:2px solid var(--line);white-space:nowrap}
+  td{padding:11px 13px;border-bottom:1px solid #eef3f8;font-size:.9rem;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  td code{white-space:nowrap}
+  tbody tr:hover{background:#fbfcfe}
+  .tag{display:inline-block;font-family:var(--display);font-weight:700;font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:3px;white-space:nowrap}
+  .t-pub{background:var(--blue-soft);color:var(--blue-600)}
+  .t-adm{background:var(--orange-soft);color:var(--orange-ink)}
+  .t-fsr{background:var(--green-soft);color:var(--green-ink)}
+  .t-sys{background:#eef2f7;color:var(--steel)}
+  .t-gone{background:#fdeeec;color:var(--err)}
+  .t-src{background:#f0ecfa;color:#5b3fa8}
+
+  footer{background:var(--navy);color:#9fb6cc;margin-top:60px;padding:30px 0;font-size:.86rem}
+  footer b{color:#fff}
+
+  @media(max-width:900px){.g3,.g2{grid-template-columns:1fr}}
+  @media print{
+    nav.toc{display:none}
+    body{background:#fff}
+    .card,.tw{box-shadow:none}
+    section{padding:26px 0 0;break-inside:avoid}
+    .map{background:#fff;color:#16222f;border:1px solid var(--line)}
+    .map pre{color:#16222f}
+    @page{margin:14mm}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <p class="eyebrow">M&amp;A Supply Company · Training Hub</p>
+    <h1>System Blueprint</h1>
+    <p class="sub">Every screen, route, module and data file in the Training Hub — what it does,
+       who can reach it, and where its data lives. Snapshot of the <code>_MandA_AUG_3</code> build.</p>
+    <div class="stamp">
+      <div><b>84</b><span>Classes in catalog</span></div>
+      <div><b>81</b><span>Live to dealers</span></div>
+      <div><b>20</b><span>Branches</span></div>
+      <div><b>224</b><span>Program dealers</span></div>
+      <div><b>Aug 3 2026</b><span>Snapshot date</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#concept">The Model</a></li>
+      <li><a href="#lenses">Three Lenses</a></li>
+      <li><a href="#map">System Map</a></li>
+      <li><a href="#routes">Route Map</a></li>
+      <li><a href="#data">Data Dictionary</a></li>
+      <li><a href="#modules">Modules</a></li>
+      <li><a href="#flows">Key Flows</a></li>
+      <li><a href="#rules">Rules &amp; Invariants</a></li>
+      <li><a href="#audit">Verify</a></li>
+      <li><a href="#gaps">Known Gaps</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="concept" class="wrap">
+  <h2>The Model<small>One class = one page = one URL. Everything else is a lens on it.</small></h2>
+  <p class="lead">The Hub used to be four separate screens — a public page, an Admin Hub, a Dealers Hub
+    and an Edits &amp; Updates hub. They were consolidated. Today there is <strong>one page per class</strong>,
+    and who you are decides what you see on it. One QR code serves the dealer, the instructor and the administrator.</p>
+
+  <div class="grid g3">
+    <div class="card blue">
+      <h4><span class="dot blue"></span>Public surface</h4>
+      <p class="who">No code required</p>
+      <ul>
+        <li>Class list with search + month filter</li>
+        <li>Hover card with the full class description</li>
+        <li>Per-class registration form</li>
+        <li>Printable class sheet (QR + details)</li>
+      </ul>
+    </div>
+    <div class="card orange">
+      <h4><span class="dot orange"></span>Operations</h4>
+      <p class="who">Admin code</p>
+      <ul>
+        <li>Edit any class field, two-pass confirmed</li>
+        <li>Add a class (inherits its branch's settings)</li>
+        <li>Full roster with contacts</li>
+        <li>Custom flier upload · reminder letters</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h4><span class="dot green"></span>Delivery</h4>
+      <p class="who">FSR code</p>
+      <ul>
+        <li>Class-day roster and stats</li>
+        <li>Grade sheet: attendance, pass/fail, score</li>
+        <li>Two-step close-out with re-open</li>
+        <li>Printable sign-in sheet</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note"><strong>Codes are verified on the server.</strong> The browser never holds the code list,
+    and a locked lens is never <em>sent</em> the roster — unlocking is the server agreeing to release data,
+    not the page revealing something it already had. Codes live in <code>data/hub_codes.json</code>;
+    all three are <code>MMMAAA</code> today.</div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="lenses" class="wrap">
+  <h2>Three Lenses<small>What each one receives from the server — the gate is in the payload, not the UI</small></h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Capability</th><th>User</th><th>Admin</th><th>FSR</th></tr></thead>
+      <tbody>
+        <tr><td>Class details (topic, date, time, venue)</td><td>✓</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Register a team</td><td>✓</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Class flier / printable sheet</td><td>✓</td><td>✓</td><td>✓</td></tr>
+        <tr><td><strong>Student roster (names, emails)</strong></td><td>—</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Seats taken / capacity</td><td>—</td><td>✓</td><td>✓</td></tr>
+        <tr><td>Edit class fields</td><td>—</td><td>✓</td><td>—</td></tr>
+        <tr><td>Add a class</td><td>—</td><td>✓</td><td>—</td></tr>
+        <tr><td>Upload / remove custom flier</td><td>—</td><td>✓</td><td>—</td></tr>
+        <tr><td>Remove a registration</td><td>—</td><td>✓</td><td>—</td></tr>
+        <tr><td>Generate reminder letters (PDF)</td><td>—</td><td>✓</td><td>—</td></tr>
+        <tr><td>Grade students</td><td>—</td><td>—</td><td>✓</td></tr>
+        <tr><td>Close / re-open a class</td><td>—</td><td>—</td><td>✓</td></tr>
+        <tr><td>Print roster / sign-in sheet</td><td>—</td><td>✓</td><td>✓</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="lead" style="margin-top:14px"><strong>ADMIN-VIEW</strong> (top-right, class list only) is a separate
+    switch. It recolours the master table orange and adds operational columns:
+    registered / capacity, life-cycle status, last reminder date, reminder count — plus the
+    <strong>ADD A CLASS</strong> action.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="map" class="wrap">
+  <h2>System Map<small>Source of truth flows down; nothing writes upward</small></h2>
+  <div class="map"><pre>
+  <span class="hm">┌─ HUMAN SOURCE ────────────────────────────────────────────────────────────┐</span>
+  <span class="ho">_data_in/MASTER COPY Training Hub Info Phase 1_latest.xlsx</span>   <span class="hm">← John edits this</span>
+  <span class="hm">└────────────────────────────────┬──────────────────────────────────────────┘</span>
+                                   <span class="hm">│</span>  <span class="hl">tools/build_from_master.py</span>
+                                   <span class="hm">▼</span>
+  <span class="hm">┌─ COMPILED DATA ───────────────────────────────────────────────────────────┐</span>
+   <span class="ho">data/OFFICIAL_CLASS_SCHEDULE.xlsx</span>   <span class="hm">classes · branches · closures</span>
+   <span class="ho">data/dealers.xlsx</span>                   <span class="hm">program dealers (typeahead)</span>
+   <span class="ho">data/employees.xlsx</span>                 <span class="hm">personnel</span>
+  <span class="hm">└────────────────────────────────┬──────────────────────────────────────────┘</span>
+                                   <span class="hm">│</span>  read fresh on EVERY request
+                                   <span class="hm">▼</span>
+  <span class="hm">┌─ APPLICATION ─────────────────────────────────────────────────────────────┐</span>
+   <span class="hl">server.py</span> → <span class="hl">src/routes.py</span>
+        <span class="hm">│</span>
+        <span class="hm">├─</span> <span class="hl">src/catalog.py</span>      read-only view of the catalog
+        <span class="hm">├─</span> <span class="hl">src/manage.py</span>       <span class="ho">THE ONLY WRITER</span> to the catalog (locked + atomic)
+        <span class="hm">├─</span> <span class="hl">src/hub_modes.py</span>    the three lenses + every gated action
+        <span class="hm">├─</span> <span class="hl">src/registrations.py</span> validate a signup
+        <span class="hm">└─</span> <span class="hl">src/db/sqlite_repo.py</span> the only module that touches SQLite
+  <span class="hm">└────────────────────────────────┬──────────────────────────────────────────┘</span>
+                                   <span class="hm">▼</span>
+  <span class="hm">┌─ LIVE STATE ──────────────────────────────────────────────────────────────┐</span>
+   <span class="hg">data/registrations.db</span>     registrations · attendees · grades · <span class="hg">audit_log</span>
+   <span class="hg">data/registrations.xlsx</span>   Excel mirror, rewritten after every signup
+   <span class="hg">data/class_address.json</span>   floating venue overrides (never touch the catalog)
+   <span class="hg">data/fliers/</span>              one uploaded flier per class
+   <span class="hg">data/email_campaign/</span>      outbox.xlsx = the reminder ledger
+  <span class="hm">└───────────────────────────────────────────────────────────────────────────┘</span>
+  </pre></div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="routes" class="wrap">
+  <h2>Route Map<small>19 endpoints. Every gated one is checked server-side.</small></h2>
+
+  <h3>Pages</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Route</th><th>Access</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><code>/</code></td><td><span class="tag t-pub">Public</span></td><td>Class list. With <code>?event=&lt;id&gt;</code> it becomes that class's page — the core of the product.</td></tr>
+      <tr><td><code>/qr-pack</code></td><td><span class="tag t-pub">Public</span></td><td>Printable sheet. One class → custom flier on page 1, QR + details on page 2. All classes → full QR pack.</td></tr>
+      <tr><td><code>/reminder-letter</code></td><td><span class="tag t-adm">Admin</span></td><td>One student's reminder letter, rendered to PDF in memory and streamed. Never written to disk.</td></tr>
+      <tr><td><code>/flier/&lt;event_id&gt;</code></td><td><span class="tag t-pub">Public</span></td><td>Serves a class's uploaded flier. Filename comes from the index, never the URL.</td></tr>
+      <tr><td><code>/refresher</code> · <code>/data-cycle</code> · <code>/survey-preview</code> · <code>/quiz</code> · <code>/notify-tm</code></td><td><span class="tag t-sys">Info</span></td><td>Static / placeholder pages from earlier phases.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Public API</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Endpoint</th><th>Method</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/events</code></td><td>GET</td><td>All active, non-past classes for the list</td></tr>
+      <tr><td><code>/api/event?id=</code></td><td>GET</td><td>One class, public fields only</td></tr>
+      <tr><td><code>/api/dealers</code></td><td>GET</td><td>Program-dealer directory for the company typeahead</td></tr>
+      <tr><td><code>/api/register</code></td><td>POST</td><td>Submit a registration. Capacity enforced <em>inside</em> the transaction.</td></tr>
+      <tr><td><code>/api/registrations</code> · <code>/api/export.xlsx</code></td><td>GET</td><td>Flat registration rows / Excel export</td></tr>
+      <tr><td><code>/api/chat</code></td><td>POST</td><td>Training assistant. Back end live; UI hidden by CSS.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Hub API — gated</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Endpoint</th><th>Method</th><th>Access</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>/api/hub/modes</code></td><td>GET</td><td><span class="tag t-pub">Public</span></td><td>The three lens definitions. Never contains a code.</td></tr>
+      <tr><td><code>/api/hub/unlock</code></td><td>POST</td><td><span class="tag t-pub">Public</span></td><td>Verify a code for a lens</td></tr>
+      <tr><td><code>/api/hub/class</code></td><td>GET</td><td><span class="tag t-sys">Per-lens</span></td><td>One class through one lens. Roster only for Admin/FSR.</td></tr>
+      <tr><td><code>/api/hub/classes</code></td><td>GET</td><td><span class="tag t-adm">Admin</span></td><td>Master table with counts, status, reminder history, branch options</td></tr>
+      <tr><td><code>/api/hub/save-class</code></td><td>POST</td><td><span class="tag t-adm">Admin</span></td><td>Save changed fields only, after a diff + code re-entry</td></tr>
+      <tr><td><code>/api/hub/create-class</code></td><td>POST</td><td><span class="tag t-adm">Admin</span></td><td>Add a class; inherits branch/state/timezone/venue</td></tr>
+      <tr><td><code>/api/hub/remove-registration</code></td><td>POST</td><td><span class="tag t-adm">Admin</span></td><td>Drop a company from a class; snapshotted to the audit log first</td></tr>
+      <tr><td><code>/api/hub/flier</code></td><td>GET/POST</td><td><span class="tag t-adm">Admin</span></td><td>Read / upload / remove a class's custom flier</td></tr>
+      <tr><td><code>/api/hub/reminders</code></td><td>POST</td><td><span class="tag t-adm">Admin</span></td><td>Generate letters + log the run as a reminder sent</td></tr>
+      <tr><td><code>/api/hub/grade</code></td><td>POST</td><td><span class="tag t-fsr">FSR</span></td><td>Save attendance / pass-fail / score / note</td></tr>
+      <tr><td><code>/api/hub/close-class</code> · <code>/api/hub/reopen-class</code></td><td>POST</td><td><span class="tag t-fsr">FSR</span></td><td>Lock grades as final / unlock to correct</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="danger"><strong>Removed by design.</strong> <code>/manage</code>, <code>/admin</code> and
+    <code>/dealers</code> <span class="tag t-gone">404</span> — the Edits &amp; Updates hub, Admin Hub and
+    Dealers Hub were consolidated into the class page. Their capabilities were ported, not dropped.</div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="data" class="wrap">
+  <h2>Data Dictionary<small>Every folder and file: what it holds, who writes it, and whether it can be regenerated</small></h2>
+
+  <h3><code>_data_in/</code> — human source</h3>
+  <p class="lead">What a person edits. Nothing in the app writes here.</p>
+  <div class="tw"><table>
+    <thead><tr><th>File</th><th>Holds</th><th>Written by</th><th>Recoverable</th></tr></thead>
+    <tbody>
+      <tr><td><code>MASTER COPY … Phase 1_latest.xlsx</code></td><td><strong>The one human-edited source.</strong> Tech Team Calendar (92 rows), M&amp;A Personnel, Top Tier Dealers, 5 Regional-Manager territory sheets.</td><td><span class="tag t-src">John</span></td><td>No — original</td></tr>
+      <tr><td><code>MASTER COPY … Phase 1.xlsx</code></td><td>Previous master (3 sheets). Superseded.</td><td><span class="tag t-src">John</span></td><td>No — original</td></tr>
+      <tr><td><code>Daikin … PROOF .jpg</code>, logos, PDFs</td><td>Vendor artwork and reference documents</td><td><span class="tag t-src">Vendor</span></td><td>No — original</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3><code>data/</code> — compiled + live</h3>
+  <div class="tw"><table>
+    <thead><tr><th>File / folder</th><th>Holds</th><th>Written by</th><th>Recoverable</th></tr></thead>
+    <tbody>
+      <tr><td><code>OFFICIAL_CLASS_SCHEDULE.xlsx</code></td><td><strong>The class catalog.</strong> 84 classes (81 live) across <code>events</code> + <code>branches</code> sheets. 19 columns incl. <code>event_id</code>, <code>branch</code>, <code>timezone</code>, <code>capacity</code>, <code>active</code>.</td><td><span class="tag t-src">Master build</span> + <span class="tag t-adm">Admin</span></td><td>Rebuildable from master</td></tr>
+      <tr><td><code>registrations.db</code></td><td><strong>Source of truth for people.</strong> Tables: <code>registrations</code>, <code>registration_attendees</code> (grades), <code>companies</code>, <code>people</code>, <code>events</code> cache, <code>class_log</code>, <code>audit_log</code>.</td><td><span class="tag t-pub">Public</span> + <span class="tag t-fsr">FSR</span> + <span class="tag t-adm">Admin</span></td><td><strong>No — back this up</strong></td></tr>
+      <tr><td><code>registrations.xlsx</code></td><td>Excel mirror of the DB in John's exact column order. Rewritten after every signup.</td><td><span class="tag t-sys">App</span></td><td>Yes — from DB</td></tr>
+      <tr><td><code>class_address.json</code></td><td>Floating venue overrides, <code>{event_id: address}</code>. Empty = use the branch location. <em>Never</em> touches the catalog.</td><td><span class="tag t-adm">Admin</span></td><td>Delete = fall back</td></tr>
+      <tr><td><code>hub_codes.json</code></td><td>Per-lens access codes. Absent = all lenses use <code>MMMAAA</code>.</td><td><span class="tag t-src">Manual</span></td><td>Yes — defaults</td></tr>
+      <tr><td><code>fliers/</code></td><td>One uploaded flier per class, named <code>&lt;event_id&gt;.&lt;ext&gt;</code>, plus <code>_index.json</code> holding original filename, size, date.</td><td><span class="tag t-adm">Admin</span></td><td>No — re-upload</td></tr>
+      <tr><td><code>email_campaign/outbox.xlsx</code></td><td><strong>The reminder ledger.</strong> One row per letter. Drives the "reminders sent" and "last reminder" columns. One reminder = one <em>day</em>.</td><td><span class="tag t-adm">Admin</span> + <span class="tag t-sys">Campaign</span></td><td>No — history</td></tr>
+      <tr><td><code>email_campaign/campaign_schedule.xlsx</code>, <code>emails/</code></td><td>Planned 7/3/1-day sends and generated HTML bodies</td><td><span class="tag t-sys">Campaign</span></td><td>Yes</td></tr>
+      <tr><td><code>dealers.xlsx</code></td><td>224 program dealers — feeds the company typeahead and resolves account # + TM. <strong>PII.</strong></td><td><span class="tag t-src">Master build</span></td><td>Rebuildable</td></tr>
+      <tr><td><code>employees.xlsx</code></td><td>Personnel from the master. <strong>PII.</strong></td><td><span class="tag t-src">Master build</span></td><td>Rebuildable</td></tr>
+      <tr><td><code>access_hub.json</code>, <code>access_codes.xlsx</code>, <code>edit_code.txt</code></td><td><span class="tag t-gone">Legacy</span> Left over from the removed access hub and edit-code system. Nothing reads them.</td><td>—</td><td>Safe to delete</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Other folders</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Folder</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/</code></td><td>Application modules — see below</td></tr>
+      <tr><td><code>static/</code></td><td><code>index.html</code>, <code>app.js</code>, <code>styles.css</code>, <code>chat.js</code>, logos, info pages</td></tr>
+      <tr><td><code>tools/</code></td><td>Build, seed, reset and audit scripts</td></tr>
+      <tr><td><code>chat_bot/</code></td><td>Sandboxed assistant package + its own data/index</td></tr>
+      <tr><td><code>docs/</code></td><td>ADRs and rules (catalog, master workbook, registrations)</td></tr>
+      <tr><td><code>qr/</code></td><td>Generated QR images</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="modules" class="wrap">
+  <h2>Modules<small>18 Python modules. One responsibility each.</small></h2>
+  <div class="tw"><table>
+    <thead><tr><th>Module</th><th>Lines</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><code>src/routes.py</code></td><td>325</td><td>HTTP routing only — no business logic</td></tr>
+      <tr><td><code>src/hub_modes.py</code></td><td>537</td><td>The three lenses, code verification, and every gated action</td></tr>
+      <tr><td><code>src/catalog.py</code></td><td>183</td><td>Read-only view of the catalog + display fields (incl. <code>time_display</code>)</td></tr>
+      <tr><td><code>src/manage.py</code></td><td>323</td><td><strong>The only writer to the catalog.</strong> Lock + atomic save.</td></tr>
+      <tr><td><code>src/db/sqlite_repo.py</code></td><td>355</td><td>The only module that imports <code>sqlite3</code></td></tr>
+      <tr><td><code>src/db/repository.py</code></td><td>73</td><td>The backend contract — swap in Postgres without touching callers</td></tr>
+      <tr><td><code>src/registrations.py</code></td><td>100</td><td>Validate a submitted form into a structured registration</td></tr>
+      <tr><td><code>src/audit.py</code></td><td>83</td><td>Append-only log of who changed what, when</td></tr>
+      <tr><td><code>src/reminder_letters.py</code></td><td>337</td><td>Per-student reminder letters → PDF in memory</td></tr>
+      <tr><td><code>src/reminders.py</code></td><td>84</td><td>Reminder history, read from the campaign ledger</td></tr>
+      <tr><td><code>src/fliers.py</code></td><td>183</td><td>Custom flier upload, validation, serving</td></tr>
+      <tr><td><code>src/class_address.py</code></td><td>79</td><td>Floating venue overrides</td></tr>
+      <tr><td><code>src/qr_pack.py</code></td><td>164</td><td>Printable QR + flier sheet</td></tr>
+      <tr><td><code>src/export.py</code></td><td>36</td><td>Registrations → xlsx in John's column order</td></tr>
+      <tr><td><code>src/dealers.py</code></td><td>83</td><td>Dealer directory for the typeahead</td></tr>
+      <tr><td><code>src/email_campaign.py</code></td><td>379</td><td>7/3/1-day reminder pipeline (simulated sends)</td></tr>
+      <tr><td><code>src/chat_bridge.py</code></td><td>45</td><td>Bridge to the sandboxed chat package</td></tr>
+      <tr><td><code>src/admin_hub.py</code></td><td>554</td><td><span class="tag t-gone">Legacy</span> Hub deleted; kept only for <code>tools/seed_demo.py</code></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="flows" class="wrap">
+  <h2>Key Flows<small>The four paths that touch data</small></h2>
+
+  <div class="grid g2">
+    <div class="card blue">
+      <h4>1 · A dealer registers</h4>
+      <ul>
+        <li>Opens <code>/?event=&lt;id&gt;</code> (link or QR)</li>
+        <li>Company typeahead resolves account # + TM silently</li>
+        <li><code>POST /api/register</code> validates email, branch, attendees</li>
+        <li><strong>Capacity checked inside the write transaction</strong> — the last seat can't go twice</li>
+        <li>Row → <code>registrations.db</code>, mirror → <code>registrations.xlsx</code>, entry → <code>audit_log</code></li>
+      </ul>
+    </div>
+    <div class="card orange">
+      <h4>2 · Admin edits or adds a class</h4>
+      <ul>
+        <li>Unlock Admin lens → edit fields</li>
+        <li>Save shows a <strong>diff</strong> and asks for the code again</li>
+        <li>Only changed fields are sent</li>
+        <li>Address → <code>class_address.json</code>; everything else → catalog via <code>manage.py</code></li>
+        <li>ADD A CLASS needs only branch + name + date; the rest is inherited</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h4>3 · FSR runs and closes a class</h4>
+      <ul>
+        <li>Grading opens only once the class date has passed</li>
+        <li>Mark attendance, pass/fail, score, note per student</li>
+        <li><strong>Step 1</strong> Submit class info → locks</li>
+        <li><strong>Step 2</strong> Close class → final (re-openable)</li>
+        <li>A no-show can never be marked passed</li>
+      </ul>
+    </div>
+    <div class="card orange">
+      <h4>4 · Reminders go out</h4>
+      <ul>
+        <li>Admin → Send reminders (PDF) → two confirmations</li>
+        <li>One personalised letter per student, streamed as PDF</li>
+        <li>Generating <strong>counts as sent</strong> — logged to the ledger</li>
+        <li>Same-day re-runs do <strong>not</strong> double-count</li>
+        <li>When email is wired in, it attaches to this same ledger</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="rules" class="wrap">
+  <h2>Rules &amp; Invariants<small>Decisions the code enforces — break these and data goes wrong</small></h2>
+  <div class="tw"><table>
+    <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><strong>One catalog, one writer</strong> — only <code>manage.py</code> writes <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code></td><td>Two writers means silent divergence</td></tr>
+      <tr><td><strong>Catalog writes are locked and atomic</strong></td><td>Two overlapping saves corrupt the workbook — this was reproduced and fixed</td></tr>
+      <tr><td><strong>Times are the branch's local time, always</strong> — <code>9:00 AM – 1:00 PM CST</code>, never converted to the viewer</td><td>A converted time puts a dealer at a branch an hour late</td></tr>
+      <tr><td><strong>Class address is an overlay, not a column</strong></td><td>Venue changes twice before a class; the schedule table shouldn't churn</td></tr>
+      <tr><td><strong>Capacity is enforced inside the transaction</strong></td><td>Checking first is a race — both parties win the last seat</td></tr>
+      <tr><td><strong>Locked lenses are never sent restricted data</strong></td><td>Otherwise "unlocking" is theatre and PII sits in the page source</td></tr>
+      <tr><td><strong>Every mutation is audited</strong></td><td>With several editors, a wrong edit must be traceable</td></tr>
+      <tr><td><strong>A no-show never passes</strong></td><td>Attendance beats score, always</td></tr>
+      <tr><td><strong>The public list hides past classes</strong></td><td>Dealers can't register for something that already happened</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="audit" class="wrap">
+  <h2>Verify<small>Don't trust the app — test it</small></h2>
+  <div class="map"><pre>
+  <span class="hg">./.venv/bin/python tools/data_audit.py --server</span>
+  </pre></div>
+  <p class="lead" style="margin-top:14px">30+ assertions, exit 0 = clean, read-only, safe any time.
+     <strong>Run it after anyone edits the workbook.</strong> It checks:</p>
+  <div class="grid g2" style="margin-top:6px">
+    <div class="card">
+      <h4>Catalog &amp; DB</h4>
+      <ul>
+        <li>Unique, non-blank <code>event_id</code>; required fields present</li>
+        <li>Dates parse; end time after start time</li>
+        <li>Every timed class states a timezone; one zone per branch</li>
+        <li>No orphan or childless registrations</li>
+        <li><strong>No class overbooked</strong>; scores 0–100; no passed-while-absent</li>
+        <li><code>num_attending</code> matches the attendee rows</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Mirrors &amp; live</h4>
+      <ul>
+        <li>Excel mirror row count matches the DB</li>
+        <li>No ghost classes in address / flier / reminder indexes</li>
+        <li>Every flier record has its file on disk</li>
+        <li>Public times show their zone; past classes hidden</li>
+        <li><strong>Admin &amp; FSR locked without a code</strong></li>
+        <li><strong>User payload carries no roster and no emails</strong></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════ -->
+<section id="gaps" class="wrap">
+  <h2>Known Gaps<small>Carried into this snapshot — stated, not hidden</small></h2>
+  <div class="tw"><table>
+    <thead><tr><th>Gap</th><th>Impact</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td><strong>John's Aug 3 master — LOADED</strong> (3 Aug). 84 classes, 224 dealers, 169 personnel</td><td>Live and verified</td><td>Build tool handles both sheet names and auto-picks the newest master. Done.</td></tr>
+      <tr><td><code>.ics</code> invites use floating time</td><td>Cross-zone phone alarms fire at the wrong hour</td><td>Add a real <code>TZID</code>/<code>VTIMEZONE</code></td></tr>
+      <tr><td>Registrations are hard-deleted</td><td>No one-click undo</td><td>Audit log snapshots the full record first, so it's reconstructable</td></tr>
+      <tr><td>Duplicate signups allowed</td><td>Same dealer + class = two rows</td><td>Needs a product decision: block, warn, or merge</td></tr>
+      <tr><td>No edit path for a registration</td><td>A typo can only be deleted and re-added</td><td>Add an edit action in the Admin roster</td></tr>
+      <tr><td><code>date_info</code> frozen at signup</td><td>Changing a class date later doesn't re-sync stored copies</td><td>Re-derive on read, or re-stamp on class edit</td></tr>
+      <tr><td>TM / Regional-Manager access removed</td><td>Deliberate — it was guesswork without logins</td><td>Rebuild with real auth using the 5 new RM sheets</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>M&amp;A Supply Company · Training Hub</b> — system blueprint, snapshot <b>3 August 2026</b>.</p>
+    <p style="margin-top:6px">Generated from the live codebase at
+       <code style="background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#c7d8e8">_MandA_AUG_3/app</code>.
+       masupplycompany.com</p>
+  </div>
+</footer>
+
+</body>
+</html>

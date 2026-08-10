@@ -1,0 +1,85 @@
+event_id,region,branch,tm_id,topic,level,event_date,start_time,end_time,capacity,seats_taken,seats_remaining,location,trainer_id,trainer_name
+little-rock-ductless-onboarding-2026-08-18,Little Rock,410- Little Rock,,DUCTLESS ONBOARDING DAIKIN,Daikin,2026-08-18,08:00,12:00,20,0,20,LITTLE ROCK BRANCH,,Brandon Newman
+hot-springs-airflow-2026-09-01,Hot Springs,"Hot Springs, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-09-01,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+huntsville-fit-install-co-2026-09-01,Huntsville,210- Huntsville,,FIT INSTALL & COMMISSIONING,Class,2026-09-01,08:00,15:00,20,0,20,HUNTSVILLE BRANCH,trainer_jones,Terry Jones
+little-rock-airflow-2026-09-02,Little Rock,410- Little Rock,,AIR FLOW & DUCT DESIGN,Level 3,2026-09-02,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+springdale-airflow-2026-09-03,Springdale,"Springdale, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-09-03,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+ft-smith-airflow-2026-09-04,Ft. Smith,"Ft. Smith, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-09-04,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+nashville-fit-install-co-2026-09-08,Nashville,101- Nashville,,FIT INSTALL & COMMISSIONING,Class,2026-09-08,08:00,15:00,20,0,20,NASHVILLE BRANCH,trainer_jones,Terry Jones
+huntsville-fit-install-co-2026-09-09,Huntsville,210- Huntsville,,FIT INSTALL & COMMISSIONING VALLEY,Class,2026-09-09,,,20,0,20,HUNTSVILLE BRANCH,,Shane & Danny
+jonesboro-airflow-2026-09-09,Jonesboro,"Jonesboro, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-09-09,09:00,12:00,20,0,20,JONESBORO BRANCH,trainer_thomson,Brian Thomson
+huntsville-fit-service-va-2026-09-10,Huntsville,210- Huntsville,,FIT SERVICE VALLEY,Class,2026-09-10,,,20,0,20,HUNTSVILLE BRANCH,,Shane & Danny
+jonesboro-dehum-2026-09-14,Jonesboro,"Jonesboro, AR",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-09-14,09:00,13:00,20,0,20,JONESBORO BRANCH,,"Joey T, Brian T"
+hot-springs-dehum-2026-09-15,Hot Springs,"Hot Springs, AR",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-09-15,09:00,13:00,20,0,20,HOT SPRINGS BRANCH,,"Joey T, Brian T"
+nashville-fitservice-2026-09-15,Nashville,101- Nashville,,FIT SERVICE,Level 1,2026-09-15,08:00,15:00,20,0,20,NASHVILLE BRANCH,trainer_jones,Terry Jones
+little-rock-dehum-2026-09-16,Little Rock,410- Little Rock,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-09-16,09:00,13:00,20,0,20,LITTLE ROCK BRANCH,,"Joey T, Brian T"
+springdale-dehum-2026-09-17,Springdale,"Springdale, AR",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-09-17,09:00,13:00,20,0,20,SPRINGDALE BRANCH,,"Joey T, Brian T"
+huntsville-fitservice-2026-09-17,Huntsville,210- Huntsville,,FIT SERVICE,Level 1,2026-09-17,08:00,15:00,20,0,20,HUNTSVILLE BRANCH,trainer_jones,Terry Jones
+ft-smith-dehum-2026-09-18,Ft. Smith,"Ft. Smith, AR",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-09-18,09:00,13:00,20,0,20,FT. SMITH BRANCH,,"Joey T, Brian T"
+hot-springs-ruud-commercial-2026-09-21,Hot Springs,"Hot Springs, AR",,RUUD COMMERCIAL PRODUCT,Product,2026-09-21,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+little-rock-ruud-commercial-2026-09-22,Little Rock,410- Little Rock,,RUUD COMMERCIAL PRODUCT,Product,2026-09-22,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+ft-smith-ruud-commercial-2026-09-23,Ft. Smith,"Ft. Smith, AR",,RUUD COMMERCIAL PRODUCT,Product,2026-09-23,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+springdale-ruud-commercial-2026-09-24,Springdale,"Springdale, AR",,RUUD COMMERCIAL PRODUCT,Product,2026-09-24,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+nashville-mastering-hp-s-2026-09-24,Nashville,101- Nashville,,MASTERING HP SYMPTONS TO SOLUTIONS,Class,2026-09-24,09:00,14:00,20,0,20,NASHVILLE BRANCH,trainer_jones,Terry Jones
+knoxville-ductless-fit-2026-09-29,Knoxville,160- Knoxville,,DUCTLESS + FIT TRAINING DAIKIN,Daikin,2026-09-29,08:00,13:00,20,0,20,KNOXVILLE BRANCH,,Brandon Newman / Tate Rust
+nashville-ductless-fit-2026-09-30,Nashville,101- Nashville,,DUCTLESS + FIT TRAINING DAIKIN,Daikin,2026-09-30,08:00,13:00,20,0,20,NASHVILLE BRANCH,,Brandon Newman / Tate Rust
+jonesboro-ruud1618-2026-09-30,Jonesboro,"Jonesboro, AR",,RUUD 16/18 SIDE DISCHARGE,Product,2026-09-30,09:00,12:00,20,0,20,JONESBORO BRANCH,trainer_thomson,Brian Thomson
+jackson-ductless-fit-2026-10-01,Jackson,"Jackson, TN",,DUCTLESS + FIT TRAINING DAIKIN,Daikin,2026-10-01,08:00,13:00,20,0,20,JACKSON BRANCH,,Brandon Newman / Tate Rust
+hot-springs-ruud1618-2026-10-06,Hot Springs,"Hot Springs, AR",,RUUD 16/18 SIDE DISCHARGE,Product,2026-10-06,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+huntsville-airflow-2026-10-06,Huntsville,210- Huntsville,,AIR FLOW & DUCT DESIGN,Level 3,2026-10-06,09:00,14:00,20,0,20,HUNTSVILLE BRANCH,,Terry / Shane
+little-rock-ruud1618-2026-10-07,Little Rock,410- Little Rock,,RUUD 16/18 SIDE DISCHARGE,Product,2026-10-07,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+birmingham-airflow-2026-10-07,Birmingham,220- Birmingham,,AIR FLOW & DUCT DESIGN,Level 3,2026-10-07,09:00,14:00,20,0,20,BIRMINGHAM BRANCH,trainer_barfield,Danny Barfield
+springdale-ruud1618-2026-10-08,Springdale,"Springdale, AR",,RUUD 16/18 SIDE DISCHARGE,Product,2026-10-08,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+mobile-airflow-2026-10-08,Mobile,"Mobile, AL",,AIR FLOW & DUCT DESIGN,Level 3,2026-10-08,09:00,14:00,20,0,20,MOBILE BRANCH,trainer_barfield,Danny Barfield
+ft-smith-ruud1618-2026-10-09,Ft. Smith,"Ft. Smith, AR",,RUUD 16/18 SIDE DISCHARGE,Product,2026-10-09,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+hot-springs-heatpump-2026-10-13,Hot Springs,"Hot Springs, AR",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-13,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+huntsville-heatpump-2026-10-13,Huntsville,210- Huntsville,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-13,09:00,14:00,20,0,20,HUNTSVILLE BRANCH,,Terry / Shane
+little-rock-heatpump-2026-10-14,Little Rock,410- Little Rock,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-14,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+birmingham-heatpump-2026-10-14,Birmingham,220- Birmingham,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-14,09:00,14:00,20,0,20,BIRMINGHAM BRANCH,trainer_barfield,Danny Barfield
+springdale-heatpump-2026-10-15,Springdale,"Springdale, AR",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-15,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+mobile-heatpump-2026-10-15,Mobile,"Mobile, AL",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-15,09:00,14:00,20,0,20,MOBILE BRANCH,trainer_barfield,Danny Barfield
+ft-smith-heatpump-2026-10-16,Ft. Smith,"Ft. Smith, AR",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-16,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+johnson-city-heatpump-2026-10-20,Johnson City,"Johnson City, TN",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-20,09:00,12:00,20,0,20,JOHNSON CITY BRANCH,trainer_mccloud,Shane McCloud
+pensacola-dehum-2026-10-20,Pensacola,"Pensacola, FL",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-20,09:00,11:00,20,0,20,PENSACOLA BRANCH,,Joey Thornton Rep
+mobile-dehum-2026-10-21,Mobile,"Mobile, AL",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-21,09:00,11:00,20,0,20,MOBILE BRANCH,,Joey Thornton Rep
+columbia-heatpump-2026-10-21,Columbia,125- Columbia,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-21,09:00,12:00,20,0,20,COLUMBIA BRANCH,trainer_jones,Terry Jones
+jonesboro-heatpump-2026-10-21,Jonesboro,"Jonesboro, AR",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-21,09:00,12:00,20,0,20,JONESBORO BRANCH,trainer_thomson,Brian Thomson
+knoxville-heatpump-2026-10-22,Knoxville,160- Knoxville,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-22,09:00,12:00,20,0,20,KNOXVILLE BRANCH,trainer_mccloud,Shane McCloud
+huntsville-dehum-2026-10-22,Huntsville,210- Huntsville,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-22,09:00,11:00,20,0,20,HUNTSVILLE BRANCH,,Joey Thornton Rep
+birmingham-dehum-2026-10-23,Birmingham,220- Birmingham,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-23,09:00,11:00,20,0,20,BIRMINGHAM BRANCH,,Joey Thornton Rep
+jonesboro-airflow-2026-10-26,Jonesboro,"Jonesboro, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-10-26,09:00,12:00,20,0,20,JONESBORO BRANCH,trainer_thomson,Brian Thomson
+hot-springs-airflow-2026-10-27,Hot Springs,"Hot Springs, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-10-27,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+chattanooga-heatpump-2026-10-27,Chattanooga,150- Chattanooga,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-27,09:00,14:00,20,0,20,CHATTANOOGA BRANCH,trainer_mccloud,Shane McCloud
+jackson-dehum-2026-10-27,Jackson,"Jackson, TN",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-27,09:00,11:00,20,0,20,JACKSON BRANCH,,Joey Thornton Rep
+little-rock-airflow-2026-10-28,Little Rock,410- Little Rock,,AIR FLOW & DUCT DESIGN,Level 3,2026-10-28,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+pensacola-heatpump-2026-10-28,Pensacola,"Pensacola, FL",,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-28,09:00,14:00,20,0,20,PENSACOLA BRANCH,trainer_barfield,Danny Barfield
+memphis-dehum-2026-10-28,Memphis,310- Memphis,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-28,09:00,11:00,20,0,20,MEMPHIS BRANCH,,Joey Thornton Rep
+springdale-airflow-2026-10-29,Springdale,"Springdale, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-10-29,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+cookeville-heatpump-2026-10-29,Cookeville,132- Cookeville,,HEAT PUMP DIAGNOSTICS,Level 3,2026-10-29,09:00,14:00,20,0,20,COOKEVILLE BRANCH,trainer_mccloud,Shane McCloud
+nesbit-dehum-2026-10-29,Nesbit,"Nesbit, MS",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-10-29,09:00,11:00,20,0,20,NESBIT BRANCH,,Joey Thornton Rep
+ft-smith-airflow-2026-10-30,Ft. Smith,"Ft. Smith, AR",,AIR FLOW & DUCT DESIGN,Level 3,2026-10-30,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+hot-springs-econet-2026-11-03,Hot Springs,"Hot Springs, AR",,ECONET ZONING,Product,2026-11-03,09:00,12:00,20,0,20,HOT SPRINGS BRANCH,trainer_thomson,Brian Thomson
+nashville-dehum-2026-11-03,Nashville,101- Nashville,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-03,09:00,11:00,20,0,20,NASHVILLE BRANCH,,Joey Thornton Rep
+little-rock-econet-2026-11-04,Little Rock,410- Little Rock,,ECONET ZONING,Product,2026-11-04,09:00,12:00,20,0,20,LITTLE ROCK BRANCH,trainer_thomson,Brian Thomson
+murfreesboro-dehum-2026-11-04,Murfreesboro,107- Murfreesboro,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-04,09:00,11:00,20,0,20,MURFREESBORO BRANCH,,Joey Thornton Rep
+springdale-econet-2026-11-05,Springdale,"Springdale, AR",,ECONET ZONING,Product,2026-11-05,09:00,12:00,20,0,20,SPRINGDALE BRANCH,trainer_thomson,Brian Thomson
+columbia-dehum-2026-11-05,Columbia,125- Columbia,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-05,09:00,11:00,20,0,20,COLUMBIA BRANCH,,Joey Thornton Rep
+ft-smith-econet-2026-11-06,Ft. Smith,"Ft. Smith, AR",,ECONET ZONING,Product,2026-11-06,09:00,12:00,20,0,20,FT. SMITH BRANCH,trainer_thomson,Brian Thomson
+jackson-fitservice-2026-11-10,Jackson,"Jackson, TN",,FIT SERVICE,Level 1,2026-11-10,09:00,14:00,20,0,20,JACKSON BRANCH,,Terry/Shane
+johnson-city-dehum-2026-11-10,Johnson City,"Johnson City, TN",,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-10,09:00,11:00,20,0,20,JOHNSON CITY BRANCH,,Joey Thornton Rep
+memphis-fitservice-2026-11-11,Memphis,310- Memphis,,FIT SERVICE,Level 1,2026-11-11,09:00,14:00,20,0,20,MEMPHIS BRANCH,,Terry/Shane
+knoxville-dehum-2026-11-11,Knoxville,160- Knoxville,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-11,09:00,11:00,20,0,20,KNOXVILLE BRANCH,,Joey Thornton Rep
+nesbit-fitservice-2026-11-12,Nesbit,"Nesbit, MS",,FIT SERVICE,Level 1,2026-11-12,09:00,14:00,20,0,20,NESBIT BRANCH,,Terry/Shane
+chattanooga-dehum-2026-11-12,Chattanooga,150- Chattanooga,,SANTE FE DEHUMIDIFIER TRAINING,Product,2026-11-12,09:00,11:00,20,0,20,CHATTANOOGA BRANCH,,Joey Thornton Rep
+nashville-fitservice-2026-11-17,Nashville,101- Nashville,,FIT SERVICE,Level 1,2026-11-17,09:00,14:00,20,0,20,NASHVILLE BRANCH,trainer_jones,Terry Jones
+chattanooga-fitservice-2026-11-18,Chattanooga,150- Chattanooga,,FIT SERVICE,Level 1,2026-11-18,09:00,14:00,20,0,20,CHATTANOOGA BRANCH,trainer_mccloud,Shane McCloud
+murfreesboro-fitservice-2026-11-19,Murfreesboro,107- Murfreesboro,,FIT SERVICE,Level 1,2026-11-19,09:00,14:00,20,0,20,MURFREESBORO BRANCH,trainer_jones,Terry Jones
+cookeville-fitservice-2026-11-20,Cookeville,132- Cookeville,,FIT SERVICE,Level 1,2026-11-20,09:00,14:00,20,0,20,COOKEVILLE BRANCH,trainer_mccloud,Shane McCloud
+johnson-city-fitservice-2026-11-24,Johnson City,"Johnson City, TN",,FIT SERVICE,Level 1,2026-11-24,09:00,14:00,20,0,20,JOHNSON CITY BRANCH,trainer_mccloud,Shane McCloud
+knoxville-fitservice-2026-11-25,Knoxville,160- Knoxville,,FIT SERVICE,Level 1,2026-11-25,09:00,14:00,20,0,20,KNOXVILLE BRANCH,trainer_mccloud,Shane McCloud
+mobile-fitservice-2026-12-01,Mobile,"Mobile, AL",,FIT SERVICE,Level 1,2026-12-01,09:00,14:00,20,0,20,MOBILE BRANCH,trainer_barfield,Danny Barfield
+jonesboro-econet-2026-12-02,Jonesboro,"Jonesboro, AR",,ECONET ZONING,Product,2026-12-02,09:00,12:00,20,0,20,JONESBORO BRANCH,trainer_thomson,Brian Thomson
+san-antonio-daikin-conference-2026-12-06,San Antonio,"San Antonio, TX",,DAIKIN TECH SERVICES CONFERENCE,Internal,2026-12-06,,,20,0,20,SAN ANTONIO BRANCH,,Tech Team
+san-antonio-daikin-conference-2026-12-07,San Antonio,"San Antonio, TX",,DAIKIN TECH SERVICES CONFERENCE,Internal,2026-12-07,,,20,0,20,SAN ANTONIO BRANCH,,Tech Team
+san-antonio-daikin-conference-2026-12-08,San Antonio,"San Antonio, TX",,DAIKIN TECH SERVICES CONFERENCE,Internal,2026-12-08,,,20,0,20,SAN ANTONIO BRANCH,,Tech Team
+columbia-fitservice-2026-12-08,Columbia,125- Columbia,,FIT SERVICE,Level 1,2026-12-08,09:00,14:00,20,0,20,COLUMBIA BRANCH,trainer_jones,Terry Jones

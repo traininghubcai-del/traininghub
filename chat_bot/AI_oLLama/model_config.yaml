@@ -1,0 +1,13 @@
+# Which local Llama to use and how to call it. Edit this file to change models
+# without touching code. (Today: local Ollama. Later: point at a hosted API.)
+
+provider: ollama
+base_url: "http://localhost:11434"
+
+# Lightweight by design. llama3.2:3b is the balanced default (~2GB, decent
+# answers). For an even lighter box use "llama3.2:1b" (~1.3GB, faster, weaker).
+model: "llama3.2:3b"
+
+temperature: 0.3      # low = factual / sticks to the provided context
+max_tokens: 400       # cap reply length (Ollama: num_predict)
+timeout_seconds: 30   # give up if the model is too slow / not running

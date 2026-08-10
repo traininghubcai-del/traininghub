@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="only light" />
+  <title>M&amp;A Supply Company — Training Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css?v=aug3i" />
+</head>
+<body>
+  <header class="ma-header">
+    <div class="ma-wrap ma-header-inner">
+      <a class="ma-brand" href="/">
+        <img src="/static/logos/ma-emblem.png?v=3" alt="M&amp;A Supply"
+             style="height:42px;display:block" />
+        <span class="ma-brand-title">TRAINING <em>HUB</em></span>
+      </a>
+      <nav class="ma-nav">
+        <a href="#faq">FAQ</a>
+        <a href="https://www.masupplycompany.com/" target="_blank" rel="noopener">Main Site ↗</a>
+        <button type="button" class="ma-nav-cta" id="admin-view-btn">ADMIN-VIEW</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- GATE: loading / not-active / class-index states -->
+  <section id="gate" class="ma-gate" hidden>
+    <div class="ma-wrap" id="gate-inner"><p class="ma-gate-loading">Loading…</p></div>
+  </section>
+
+  <!-- CLASS PAGE: class info, then the registration hub right below -->
+  <main id="class-page" hidden>
+    <section class="ma-hero ma-hero-slim">
+      <div class="ma-hero-pattern" aria-hidden="true"></div>
+      <div class="ma-wrap ma-hero-inner">
+        <!-- no logo here: the sticky header already carries the M&A mark -->
+        <p class="ma-eyebrow" id="hero-eyebrow">M&amp;A SUPPLY · TRAINING</p>
+        <h1 id="hero-title">Training Event</h1>
+        <p class="ma-hero-sub" id="hero-sub">—</p>
+        <p class="ma-hero-where" id="hero-where"></p>
+        <div class="ma-hero-cta">
+          <a href="#register" class="btn btn-primary">Register now ↓</a>
+          <button type="button" class="ma-staff-link" id="staff-link"
+                  aria-expanded="false" aria-controls="staff-gate">Edit / audit this class</button>
+        </div>
+        <form class="ma-staff-gate" id="staff-gate" hidden>
+          <div class="ma-staff-row">
+            <input type="password" id="mode-code" autocomplete="off" placeholder="Staff access code" />
+            <button type="submit" class="ma-staff-go" data-mode="admin">Admin</button>
+            <button type="submit" class="ma-staff-go" data-mode="fsr">FSR</button>
+            <button type="button" class="ma-staff-x" id="mode-cancel" aria-label="Close">✕</button>
+          </div>
+          <p class="ma-mode-err" id="mode-err" hidden></p>
+        </form>
+      </div>
+    </section>
+
+    <section id="register" class="ma-section ma-register">
+      <div class="ma-wrap ma-register-narrow">
+
+        <!-- Slim context strip. The hero already states the class — nothing is
+             repeated here. Just: which view am I in, and (staff only) the tools. -->
+        <div class="ma-strip">
+          <div class="ma-modes" id="ma-modes" hidden></div>
+          <p class="ma-banner-print" id="staff-tools" hidden>
+            <a class="ma-print-link" id="print-class" href="/qr-pack" target="_blank" rel="noopener">Print class sheet (QR + details)</a>
+            <button type="button" class="ma-print-link" id="flier-btn" aria-expanded="false" aria-controls="flier-panel">Custom flier</button>
+            <button type="button" class="ma-print-link" id="roster-btn">Print roster</button>
+          </p>
+        </div>
+        <p class="ma-card-note" id="ev-note" hidden></p>
+        <div class="ma-flier-panel" id="flier-panel" hidden></div>
+
+        <!-- ADMIN + FSR views (built by app.js once their code is accepted) -->
+        <div id="mode-admin" class="ma-mode-panel" hidden></div>
+        <div id="mode-fsr" class="ma-mode-panel" hidden></div>
+
+        <!-- USER view — the default: register your team -->
+        <div id="mode-user">
+        <div class="ma-hub-head">
+          <div class="ma-hub-titlerow">
+            <h2 class="ma-hub-title">Register your team</h2>
+            <a class="ma-share-flier" id="share-flier" href="/qr-pack" target="_blank" rel="noopener"
+               title="Open this class's sheet — flier + QR code + details, ready to print, save as PDF or share">
+              Share / Print class details
+            </a>
+          </div>
+          <p class="ma-hub-sub">Seats are limited — reserve your spots below.</p>
+        </div>
+
+        <form class="ma-form" id="register-form" novalidate>
+          <input type="hidden" name="event_id" id="f-event_id" />
+
+          <ol class="ma-steps">
+            <li>Enter your company info.</li>
+            <li>Add each person — type their name and pick a role.</li>
+            <li>Use <b>“+ Add another attendee”</b> for more people, then submit.</li>
+          </ol>
+
+          <div class="ma-form-grid">
+            <div class="ma-field">
+              <label for="contact_email">Work Email <span class="req">*</span></label>
+              <input id="contact_email" name="contact_email" type="email" placeholder="you@company.com" required />
+            </div>
+            <div class="ma-field">
+              <label for="contact_phone">Phone (for class updates)</label>
+              <input id="contact_phone" name="contact_phone" type="tel" placeholder="(555) 555-5555" />
+            </div>
+            <div class="ma-field">
+              <label for="company_name">Company Name <span class="req">*</span></label>
+              <input id="company_name" name="company_name" type="text" placeholder="Start typing your company…"
+                     list="dealer-options" autocomplete="off" required />
+              <datalist id="dealer-options"></datalist>
+              <input type="hidden" name="customer_id" id="f-customer_id" />
+              <p class="ma-field-hint" id="company-hint" hidden>✓ M&amp;A program dealer — we'll match your account automatically.</p>
+            </div>
+            <div class="ma-field">
+              <label for="branch">Your M&amp;A Branch <span class="req">*</span></label>
+              <select id="branch" name="branch" required><option value="">Select branch…</option></select>
+            </div>
+          </div>
+
+          <div class="ma-attendees-block">
+            <label class="ma-attendees-label">Attendees <span class="req">*</span></label>
+            <div id="attendees-list"></div>
+            <div class="ma-attendees-foot">
+              <button type="button" class="ma-add-btn" id="add-attendee">+ Add another attendee</button>
+              <span class="ma-counter" id="attendee-counter">Total attending: 1 person</span>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" id="submit-btn">Submit Registration</button>
+          <p class="ma-form-note">By submitting you confirm the information is accurate and consent to M&amp;A Supply Company Inc. contacting you about this training event.</p>
+          <p class="ma-form-msg" id="form-msg" role="status" aria-live="polite"></p>
+        </form>
+        </div><!-- /#mode-user -->
+      </div>
+    </section>
+
+    <section id="faq" class="ma-section ma-section-alt">
+      <div class="ma-wrap">
+        <div class="ma-section-head"><h2>Logistics &amp; FAQ</h2></div>
+        <div class="ma-faq">
+          <details><summary>Is there a cost to attend?</summary><p>No — training is provided at no cost to active M&amp;A Supply dealers.</p></details>
+          <details><summary>What should I bring?</summary><p>Bring your own hand tools and PPE. Training materials are provided on-site.</p></details>
+          <details><summary>Is lunch and parking provided?</summary><p>Lunch is provided. Free parking is available at the branch.</p></details>
+          <details><summary>Who do I call if I have a problem?</summary><p>Call your local M&amp;A branch — they handle seats, directions and anything on the day. Your Territory Manager can help with your account.</p></details>
+          <details><summary>What if I need to cancel?</summary><p>Let your M&amp;A branch know at least 48 hours ahead so we can offer the seat to another dealer.</p></details>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="ma-footer">
+    <div class="ma-wrap ma-footer-inner">
+      <p><img src="/static/logos/ma-s-white.png?v=3" alt="M&amp;A Supply" style="height:90px;display:block;margin:0 auto 12px;opacity:.92" /></p>
+      <p>M&amp;A Supply Company Inc.</p>
+      <p><a href="https://www.masupplycompany.com/" target="_blank" rel="noopener">masupplycompany.com</a> &middot; <a href="#" id="footer-admin">Training team login</a></p>
+    </div>
+  </footer>
+
+  <!-- TRAINING HUB ASSISTANT (chat widget) -->
+  <button id="chat-launcher" class="chat-launcher" aria-label="Open the Training Hub">
+    <span class="chat-launcher-dot" aria-hidden="true"></span>
+    Ask the Training Hub
+  </button>
+
+  <section id="chat-panel" class="chat-panel chat-panel--hidden" aria-live="polite">
+    <header class="chat-head">
+      <div class="chat-head-title">
+        <span class="chat-title">Training Assistant</span>
+        <span id="chat-badge" class="chat-badge chat-badge--public">Public</span>
+      </div>
+      <div class="chat-head-actions">
+        <button id="chat-min" class="chat-iconbtn" aria-label="Minimize" title="Minimize">▁</button>
+        <button id="chat-close" class="chat-iconbtn" aria-label="Close" title="Close">✕</button>
+      </div>
+    </header>
+
+    <!-- mode toggle -->
+    <div class="chat-modes" role="tablist">
+      <button class="chat-modebtn is-active" data-mode="public" role="tab">Public</button>
+      <button class="chat-modebtn" data-mode="tm" role="tab">Territory Manager</button>
+      <button class="chat-modebtn" data-mode="trainer" role="tab">Trainer</button>
+    </div>
+
+    <p id="chat-hint" class="chat-hint">Ask about classes, topics, locations, and open seats.</p>
+
+    <!-- connect field (TM key / Trainer code) — shown only for those modes -->
+    <div id="chat-connect" class="chat-connect" hidden>
+      <input id="chat-key" class="chat-key" type="text" autocomplete="off" />
+      <button id="chat-connect-btn" class="chat-connect-btn" type="button">Connect</button>
+    </div>
+
+    <div id="chat-log" class="chat-log"></div>
+
+    <div class="chat-suggest" id="chat-suggest"></div>
+
+    <form id="chat-form" class="chat-form">
+      <input id="chat-input" class="chat-input" type="text"
+             placeholder="Ask about classes, or paste a TM access key…" autocomplete="off" />
+      <button type="submit" class="chat-send" aria-label="Send">➤</button>
+    </form>
+  </section>
+
+  <!-- minimized bar -->
+  <button id="chat-mini" class="chat-mini chat-mini--hidden" aria-label="Reopen chat">
+    <span class="chat-launcher-dot" aria-hidden="true"></span>
+    Training Assistant <span id="chat-mini-badge" class="chat-badge chat-badge--public">Public</span>
+  </button>
+
+  <script src="/static/app.js?v=aug3i"></script>
+  <script src="/static/chat.js"></script>
+</body>
+</html>

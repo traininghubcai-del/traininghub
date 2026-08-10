@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>M&amp;A Training Hub — Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0a2540;--navy-2:#0e3a66;--navy-deep:#06192e;
+    --blue:#1d6fc2;--blue-600:#155a9f;--blue-soft:#e9f1fa;
+    --orange:#d9822b;--orange-soft:#fdf2e4;--orange-ink:#a35d12;
+    --green:#1f8a4c;--green-soft:#e9f6ee;--green-ink:#157a42;
+    --gold:#e8b32c;--err:#c0392b;
+    --ink:#16222f;--muted:#56697a;--steel:#5b7185;
+    --line:#d9e2ec;--bg:#f3f6fa;--white:#fff;
+    --display:"Saira",system-ui,sans-serif;--body:"Barlow",system-ui,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+    --r:12px;--lift:0 2px 4px rgba(10,37,64,.06),0 18px 44px rgba(10,37,64,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);color:var(--ink);background:var(--bg);line-height:1.6}
+  .wrap{width:min(1080px,92vw);margin:0 auto}
+
+  header.hero{background:linear-gradient(135deg,var(--navy-deep),var(--navy) 55%,var(--navy-2));color:#fff;position:relative;overflow:hidden}
+  header.hero::after{content:"";position:absolute;inset:0;
+    background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 26px);
+    -webkit-mask-image:linear-gradient(105deg,#000 30%,transparent 78%);mask-image:linear-gradient(105deg,#000 30%,transparent 78%)}
+  .hero-in{position:relative;z-index:1;padding:56px 0 48px}
+  .eyebrow{font-family:var(--display);font-weight:700;font-size:.75rem;letter-spacing:.18em;text-transform:uppercase;color:#6fb0ee}
+  h1{font-family:var(--display);font-weight:900;font-size:clamp(2.2rem,5vw,3.4rem);line-height:1.02;margin:12px 0 14px}
+  .hero p{color:#c7d8e8;font-size:1.08rem;max-width:66ch}
+  .kpi{display:flex;gap:30px;flex-wrap:wrap;margin-top:30px;padding-top:24px;border-top:1px solid rgba(255,255,255,.16)}
+  .kpi div b{display:block;font-family:var(--display);font-weight:900;font-size:1.8rem;line-height:1}
+  .kpi div span{font-family:var(--display);font-weight:600;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:#9fb6cc}
+
+  nav{position:sticky;top:0;z-index:30;background:var(--navy);border-bottom:3px solid var(--blue)}
+  nav ol{display:flex;gap:0;list-style:none;overflow-x:auto;counter-reset:s}
+  nav a{display:flex;align-items:center;gap:8px;padding:13px 18px;color:#c7d8e8;text-decoration:none;
+    font-family:var(--display);font-weight:600;font-size:.82rem;white-space:nowrap;
+    border-bottom:3px solid transparent;margin-bottom:-3px}
+  nav a::before{counter-increment:s;content:counter(s);display:grid;place-items:center;width:20px;height:20px;
+    border-radius:50%;background:rgba(255,255,255,.12);font-size:.68rem;font-weight:800}
+  nav a:hover{color:#fff;background:rgba(255,255,255,.07);border-bottom-color:var(--blue)}
+
+  section{padding:56px 0 10px}
+  .step-h{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .num{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--display);font-weight:900;font-size:1.15rem;color:#fff;background:var(--blue);box-shadow:0 6px 18px rgba(29,111,194,.34)}
+  .num.o{background:var(--orange);box-shadow:0 6px 18px rgba(217,130,43,.34)}
+  .num.g{background:var(--green);box-shadow:0 6px 18px rgba(31,138,76,.30)}
+  h2{font-family:var(--display);font-weight:800;font-size:clamp(1.4rem,2.6vw,1.95rem);color:var(--navy);line-height:1.15}
+  h2 small{display:block;font-family:var(--body);font-weight:500;font-size:.92rem;color:var(--muted);margin-top:5px}
+  h3{font-family:var(--display);font-weight:800;font-size:1.02rem;color:var(--navy);margin:24px 0 10px}
+  p.lead{max-width:76ch;margin-bottom:10px}
+
+  .shot{background:var(--white);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--lift);overflow:hidden;margin:18px 0}
+  .shot-bar{display:flex;align-items:center;gap:7px;padding:10px 14px;background:#eef3f8;border-bottom:1px solid var(--line)}
+  .shot-bar i{width:10px;height:10px;border-radius:50%;background:#cdd8e4;display:block}
+  .shot-bar span{margin-left:8px;font-family:var(--mono);font-size:.73rem;color:var(--muted)}
+  .shot-b{padding:20px 22px}
+
+  .ui-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;background:var(--navy);border-radius:8px;margin-bottom:16px}
+  .ui-nav .brand{font-family:var(--display);font-weight:800;color:#fff;font-size:.9rem;letter-spacing:.03em}
+  .ui-nav .brand em{font-style:normal;font-weight:500;color:#acc6e3}
+  .btn-demo{font-family:var(--display);font-weight:700;font-size:.76rem;padding:8px 15px;border-radius:6px;border:0;color:#fff}
+  .b-orange{background:var(--orange)} .b-green{background:var(--green)} .b-blue{background:var(--blue)}
+
+  .lens{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+  .lens button{display:flex;align-items:center;gap:9px;padding:9px 14px;border:2px solid var(--line);
+    background:#fff;border-radius:6px;font-family:var(--body);text-align:left}
+  .lens .sw{width:10px;height:10px;border-radius:2px}
+  .lens b{display:block;font-family:var(--display);font-weight:800;font-size:.87rem;color:var(--navy)}
+  .lens small{font-size:.7rem;color:var(--muted)}
+  .lens .on-b{border-color:var(--blue);background:var(--blue-soft)}
+  .lens .on-o{border-color:var(--orange);background:var(--orange-soft)}
+  .lens .on-g{border-color:var(--green);background:var(--green-soft)}
+
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th{font-family:var(--display);font-weight:700;font-size:.63rem;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--muted);text-align:left;padding:9px 10px;background:#f3f7fb;border-bottom:2px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid #eef3f8}
+  tr:last-child td{border-bottom:0}
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:#fff;box-shadow:var(--lift);margin:16px 0}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--lift);padding:20px 22px}
+  .card.b{border-top:4px solid var(--blue)} .card.o{border-top:4px solid var(--orange)} .card.g{border-top:4px solid var(--green)}
+  .card h4{font-family:var(--display);font-weight:800;font-size:1rem;color:var(--navy);margin-bottom:8px}
+  .card ul{list-style:none;font-size:.9rem}
+  .card li{padding:5px 0 5px 15px;position:relative;border-bottom:1px solid #eef3f8}
+  .card li:last-child{border-bottom:0}
+  .card li::before{content:"";position:absolute;left:0;top:.85em;width:5px;height:5px;background:var(--steel)}
+
+  .tip{background:var(--blue-soft);border-left:4px solid var(--blue);border-radius:0 8px 8px 0;padding:13px 17px;margin:16px 0;font-size:.93rem}
+  .warn{background:#fff8e6;border-left:4px solid var(--gold);border-radius:0 8px 8px 0;padding:13px 17px;margin:16px 0;font-size:.93rem}
+  .stop{background:#fdf3f3;border-left:4px solid var(--err);border-radius:0 8px 8px 0;padding:13px 17px;margin:16px 0;font-size:.93rem}
+  code{font-family:var(--mono);font-size:.85em;background:#eef3f8;border:1px solid var(--line);border-radius:4px;padding:1px 6px;color:var(--navy);white-space:nowrap}
+  pre{background:var(--navy-deep);color:#c7d8e8;padding:16px 18px;border-radius:var(--r);overflow-x:auto;
+      font-family:var(--mono);font-size:.8rem;line-height:1.7;margin:14px 0}
+  pre b{color:#7fe0a6;font-weight:600}
+  .kbd{display:inline-block;font-family:var(--display);font-weight:700;font-size:.72rem;letter-spacing:.05em;
+    background:var(--navy);color:#fff;padding:3px 9px;border-radius:4px}
+
+  footer{background:var(--navy);color:#9fb6cc;margin-top:64px;padding:34px 0;font-size:.87rem}
+  footer b{color:#fff}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  @media print{nav{display:none}body{background:#fff}section{padding:24px 0 0;break-inside:avoid}
+    .shot,.card,.tw{box-shadow:none}pre{background:#f5f7fb;color:#16222f}@page{margin:14mm}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap hero-in">
+    <p class="eyebrow">M&amp;A Supply Company · Training Hub</p>
+    <h1>Complete Walkthrough</h1>
+    <p>Every screen, every role, start to finish — how a dealer registers, how an
+       administrator runs the schedule, and how an instructor grades and closes a class.</p>
+    <div class="kpi">
+      <div><b>81</b><span>Live classes</span></div>
+      <div><b>20</b><span>Branches</span></div>
+      <div><b>14</b><span>Class topics</span></div>
+      <div><b>224</b><span>Program dealers</span></div>
+      <div><b>Aug–Dec</b><span>2026 season</span></div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <div class="wrap">
+    <ol>
+      <li><a href="#s1">Find a class</a></li>
+      <li><a href="#s2">Register</a></li>
+      <li><a href="#s3">Share &amp; print</a></li>
+      <li><a href="#s4">Three lenses</a></li>
+      <li><a href="#s5">Admin</a></li>
+      <li><a href="#s6">Add a class</a></li>
+      <li><a href="#s7">Reminders</a></li>
+      <li><a href="#s8">Instructor</a></li>
+      <li><a href="#s9">Run &amp; verify</a></li>
+    </ol>
+  </div>
+</nav>
+
+<!-- 1 -->
+<section id="s1" class="wrap">
+  <div class="step-h"><div class="num">1</div>
+    <h2>Finding a class<small>What a dealer sees first — no login, no code</small></h2></div>
+  <p class="lead">The hub opens on the full season: <strong>81 live classes</strong> across 20 branches,
+     one line each. Search by class, city or instructor; filter by month. Past classes never appear.</p>
+
+  <div class="shot">
+    <div class="shot-bar"><i></i><i></i><i></i><span>jw.caitryapps.com</span></div>
+    <div class="shot-b" style="background:#0e1c2f">
+      <div class="ui-nav"><span class="brand">TRAINING <em>HUB</em></span>
+        <button class="btn-demo b-orange">ADMIN-VIEW</button></div>
+      <div class="tw" style="box-shadow:none;margin:0">
+        <table>
+          <thead><tr><th>Date</th><th>Class</th><th>Time</th><th>Instructor</th><th>Location</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><b>Oct 7</b></td><td>AIR FLOW &amp; DUCT DESIGN</td><td>9:00 AM – 2:00 PM CST</td><td>Danny Barfield</td><td>Birmingham, AL</td><td style="color:var(--blue)"><b>Register →</b></td></tr>
+            <tr><td><b>Oct 14</b></td><td>HEAT PUMP DIAGNOSTICS</td><td>9:00 AM – 2:00 PM CST</td><td>Danny Barfield</td><td>Birmingham, AL</td><td style="color:var(--blue)"><b>Register →</b></td></tr>
+            <tr><td><b>Nov 12</b></td><td>SANTE FE DEHUMIDIFIER TRAINING</td><td>9:00 AM – 11:00 AM EST</td><td>Joey T, Brian T</td><td>Chattanooga, TN</td><td style="color:var(--blue)"><b>Register →</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tip"><strong>Times are always the branch's local time.</strong> A Chattanooga class reads
+    <code>EST</code>, a Birmingham class reads <code>CST</code> — and it stays that way no matter where the
+    dealer is browsing from. Converting to the viewer's clock is how people arrive an hour late.</div>
+
+  <p class="lead"><strong>Hover any row</strong> for a card with the full class name, venue, level,
+     instructor and the complete description — the details a one-line row has to clip.</p>
+</section>
+
+<!-- 2 -->
+<section id="s2" class="wrap">
+  <div class="step-h"><div class="num">2</div>
+    <h2>Registering a team<small>The dealer's whole job, on one page</small></h2></div>
+  <p class="lead">Clicking a class opens its page. The header states the class once — name, date,
+     time with timezone, venue — and everything below it is the form.</p>
+
+  <div class="shot">
+    <div class="shot-bar"><i></i><i></i><i></i><span>jw.caitryapps.com/?event=birmingham-airflow-2026-10-07</span></div>
+    <div class="shot-b">
+      <p class="eyebrow" style="color:var(--blue)">M&amp;A SUPPLY · BIRMINGHAM</p>
+      <h2 style="font-size:1.7rem;margin:6px 0">Air Flow &amp; Duct Design</h2>
+      <p style="color:var(--muted)">Wednesday, October 7, 2026 · 9:00 AM – 2:00 PM CST</p>
+      <p style="font-family:var(--display);font-weight:600;color:var(--steel);font-size:.86rem;letter-spacing:.04em">BIRMINGHAM BRANCH</p>
+      <div class="lens">
+        <button class="on-b"><span class="sw" style="background:var(--blue)"></span><span><b>User</b><small>Register</small></span></button>
+        <button><span class="sw" style="background:var(--orange)"></span><span><b>Admin</b><small>Edit · roster</small></span></button>
+        <button><span class="sw" style="background:var(--green)"></span><span><b>FSR</b><small>Roster · grade</small></span></button>
+      </div>
+      <h3>Register your team</h3>
+      <p style="font-size:.9rem;color:var(--muted)">Work email · Phone · Company · Branch, then one row per attendee.</p>
+    </div>
+  </div>
+
+  <h3>What happens on submit</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Step</th><th>What the system does</th></tr></thead>
+    <tbody>
+      <tr><td>Company typeahead</td><td>Matches the 224-dealer directory and silently resolves the <strong>account number and Territory Manager</strong> — the dealer is never asked for them.</td></tr>
+      <tr><td>Validation</td><td>Real email format, known branch, at least one named attendee. Bad input is rejected with a plain message, never a crash.</td></tr>
+      <tr><td>Seat check</td><td>Runs <strong>inside the write</strong>, so two people going for the last seat can't both win.</td></tr>
+      <tr><td>Saved</td><td>Registration, attendees, company and people rows land in the database; the Excel mirror is rewritten; an audit entry records it.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tip">Registering the same person again is recognised — they're counted as
+     <em>returning</em> rather than duplicated in the training record.</div>
+</section>
+
+<!-- 3 -->
+<section id="s3" class="wrap">
+  <div class="step-h"><div class="num">3</div>
+    <h2>Sharing &amp; printing a class<small>One button next to “Register your team”</small></h2></div>
+  <p class="lead"><span class="kbd">Share / Print class details</span> opens a print-ready sheet for that
+     class. If the class has vendor artwork uploaded, the sheet is <strong>two exact pages</strong>:</p>
+  <div class="cols">
+    <div class="card b"><h4>Page 1 — the flier</h4>
+      <ul><li>Vendor artwork, full page, nothing else on it</li>
+          <li>Sized so it can never spill onto a second sheet</li>
+          <li>Print page 1 only for a clean hand-out</li></ul></div>
+    <div class="card b"><h4>Page 2 — QR + details</h4>
+      <ul><li>QR code straight to this class's registration page</li>
+          <li>Date, time with timezone, venue, instructor</li>
+          <li>“Free event · lunch included” block</li></ul></div>
+  </div>
+  <p class="lead">No flier uploaded? The sheet is simply the QR page — nothing looks missing.</p>
+</section>
+
+<!-- 4 -->
+<section id="s4" class="wrap">
+  <div class="step-h"><div class="num">4</div>
+    <h2>The three lenses<small>One page, three points of view</small></h2></div>
+  <p class="lead">The buttons under the class heading switch what the page is <em>for</em>.
+     <strong>User</strong> is open to everyone. <strong>Admin</strong> and <strong>FSR</strong> ask for a code.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Capability</th><th style="text-align:center">User</th><th style="text-align:center">Admin</th><th style="text-align:center">FSR</th></tr></thead>
+    <tbody>
+      <tr><td>Class details, register, print the sheet</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+      <tr><td><strong>Roster — names, companies, emails</strong></td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+      <tr><td>Seats taken / capacity</td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center">✓</td><td style="text-align:center">✓</td></tr>
+      <tr><td>Edit the class · add a class · upload a flier</td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center">✓</td><td style="text-align:center;color:var(--muted)">—</td></tr>
+      <tr><td>Reminder letters · remove a registration</td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center">✓</td><td style="text-align:center;color:var(--muted)">—</td></tr>
+      <tr><td>Grade students · close the class</td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center;color:var(--muted)">—</td><td style="text-align:center">✓</td></tr>
+    </tbody>
+  </table></div>
+  <div class="stop"><strong>The lock is real, not cosmetic.</strong> Codes are checked on the server,
+    and a locked lens is <em>never sent</em> the roster — it isn't hidden in the page for someone to dig out.
+    Access is remembered for the browser session only, so it ends when the browser closes.</div>
+</section>
+
+<!-- 5 -->
+<section id="s5" class="wrap">
+  <div class="step-h"><div class="num o">5</div>
+    <h2>Administrator view<small>Running the schedule</small></h2></div>
+  <p class="lead">The <span class="kbd" style="background:var(--orange)">ADMIN-VIEW</span> button on the class
+     list turns the master table into a control surface — it goes green while active and adds the
+     operational columns the public never sees.</p>
+  <div class="shot"><div class="shot-bar"><i></i><i></i><i></i><span>Master table · ADMIN-VIEW ON</span></div>
+    <div class="shot-b" style="background:#0e1c2f">
+      <div class="tw" style="box-shadow:none;margin:0"><table>
+        <thead><tr><th>Date</th><th>Class</th><th>Reg.</th><th>Status</th><th>Last reminder</th><th>#</th></tr></thead>
+        <tbody>
+          <tr><td><b>Oct 7</b></td><td style="color:var(--orange-ink)"><b>AIR FLOW &amp; DUCT DESIGN</b></td><td><b>6</b>/20</td><td><span style="background:var(--blue-soft);color:var(--blue-600);padding:2px 7px;border-radius:3px;font-size:.66rem;font-weight:700">OPEN</span></td><td>Oct 1, 2026</td><td>2</td></tr>
+          <tr><td><b>Sep 14</b></td><td style="color:var(--orange-ink)"><b>SANTE FE DEHUMIDIFIER</b></td><td><b>18</b>/20</td><td><span style="background:#fff4d6;color:#8a6400;padding:2px 7px;border-radius:3px;font-size:.66rem;font-weight:700">NEEDS GRADING</span></td><td>Sep 11, 2026</td><td>3</td></tr>
+        </tbody>
+      </table></div>
+    </div></div>
+
+  <h3>Editing a class</h3>
+  <p class="lead">Open a class → Admin lens → change any field → <strong>Save changes</strong>. It shows you
+     exactly what will change and asks for the code again before writing:</p>
+  <pre>You're about to change <b>2 fields</b> on this live class:
+
+  CAPACITY        20 → 24
+  CLASS ADDRESS   (empty) → 1200 S Caraway Rd, Jonesboro, AR
+
+  Enter the Admin access code to apply these changes
+  [ •••••• ]  <b>Confirm &amp; save</b>   Cancel</pre>
+  <div class="cols">
+    <div class="card o"><h4>Why it asks twice</h4>
+      <ul><li>An unlocked laptop can't silently rewrite a live class</li>
+          <li>You see the change before it happens, not after</li>
+          <li>Only changed fields are sent — no stale overwrite</li></ul></div>
+    <div class="card o"><h4>Class address is special</h4>
+      <ul><li>Stored separately from the schedule table</li>
+          <li>Overrides the branch venue for that class only</li>
+          <li>Clear it and the class falls back automatically</li></ul></div>
+  </div>
+  <p class="lead">The Admin lens also carries the <strong>full roster with contacts</strong>, custom flier
+     upload, and remove-a-registration.</p>
+</section>
+
+<!-- 6 -->
+<section id="s6" class="wrap">
+  <div class="step-h"><div class="num o">6</div>
+    <h2>Adding a class<small>Three answers, everything else inherited</small></h2></div>
+  <p class="lead">With ADMIN-VIEW on, <strong>ADD A CLASS</strong> appears under the page title.
+     You supply <strong>branch, class name and date</strong>. The rest is copied from the classes
+     already running at that branch:</p>
+  <pre>Branch:  Nashville, TN
+Name:    HEAT PUMP DIAGNOSTICS
+Date:    2026-12-08
+
+<b>Inherited automatically →</b>
+  region Nashville · state TN · timezone CST · weekday TUESDAY
+  venue NASHVILLE BRANCH · host “Hosted by M&amp;A Supply — Nashville, TN”
+  level Level 1 · instructor Terry Jones</pre>
+  <p class="lead">The class is live immediately — it appears on the public list, its page works,
+     and it can be registered for.</p>
+  <div class="tip">Optional fields — capacity, start/end time, instructor, street address, notes —
+     override the inherited values when you fill them in.</div>
+</section>
+
+<!-- 7 -->
+<section id="s7" class="wrap">
+  <div class="step-h"><div class="num o">7</div>
+    <h2>Reminder letters<small>Printable, personalised, and counted</small></h2></div>
+  <p class="lead">At the bottom of the Admin lens: <span class="kbd" style="background:var(--gold);color:#3d2c00">✉️ Send reminders (PDF)</span>.
+     It confirms twice, then downloads <strong>one letter per student</strong>.</p>
+  <div class="cols">
+    <div class="card o"><h4>What's in each letter</h4>
+      <ul><li>“You are 42 days away from your class”</li>
+          <li>Student's name, company and role</li>
+          <li>Full class details incl. instructor</li>
+          <li>What's included · what to bring</li>
+          <li>Who to call, with the phone number</li></ul></div>
+    <div class="card o"><h4>How it's counted</h4>
+      <ul><li>Generating <strong>is</strong> the send — there's no mail system yet</li>
+          <li>Logged to the same ledger the future email sender will use</li>
+          <li><strong>One reminder = one day</strong>, however many times you click</li>
+          <li>Shows up as “Last reminder” + count on the master table</li></ul></div>
+  </div>
+  <div class="warn"><strong>When email is switched on</strong>, it attaches to this same ledger —
+    so the counts you're building now stay correct and nothing has to be reconciled.</div>
+</section>
+
+<!-- 8 -->
+<section id="s8" class="wrap">
+  <div class="step-h"><div class="num g">8</div>
+    <h2>Instructor view<small>Class day, grading, close-out</small></h2></div>
+  <p class="lead">The <strong>FSR</strong> lens is the instructor's screen: who's coming, class stats,
+     and after the class, the grade sheet.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Student</th><th>Company</th><th>Branch</th><th>Here?</th><th>Pass / Fail</th><th>Score</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><b>Test Tech</b><br /><span style="font-size:.76rem;color:var(--muted)">Technician</span></td><td>MULLINS HEAT &amp; A/C</td><td>Birmingham</td><td>☑</td><td>Pass</td><td>88</td><td>Strong on airflow</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Closing the class — two steps</h3>
+  <div class="cols">
+    <div class="card g"><h4>1 · Submit class info</h4>
+      <ul><li>Saves attendance, pass/fail, score and notes</li>
+          <li>Locks the sheet</li>
+          <li>Edit any grade and it re-arms for re-submit</li></ul></div>
+    <div class="card g"><h4>2 · Close class</h4>
+      <ul><li>Unlocks only once every student is graded</li>
+          <li>Marks attendance and grades final</li>
+          <li><strong>Reopen to fix a grade</strong> if something was wrong</li></ul></div>
+  </div>
+  <div class="tip"><strong>Rules the system enforces:</strong> grading opens only after the class date has
+    passed · a student marked absent can never be marked passed · scores stay within 0–100 ·
+    close-out is blocked while anyone is ungraded.</div>
+  <p class="lead"><span class="kbd" style="background:var(--green)">Print roster</span> produces a numbered
+     sign-in sheet with a signature column and four blank rows for walk-ins.</p>
+</section>
+
+<!-- 9 -->
+<section id="s9" class="wrap">
+  <div class="step-h"><div class="num">9</div>
+    <h2>Running &amp; verifying<small>Start it, check it, trust it</small></h2></div>
+  <pre>cd "_MandA_AUG_3/app"
+<b>./.venv/bin/python server.py</b>          # then open http://127.0.0.1:8000
+
+<b>./.venv/bin/python tools/data_audit.py --server</b>   # 30+ checks, exit 0 = clean</pre>
+
+  <h3>Refreshing from John's workbook</h3>
+  <p class="lead">Drop the new <code>MASTER COPY … .xlsx</code> into <code>_data_in/</code> and run:</p>
+  <pre><b>./.venv/bin/python tools/build_from_master.py</b>
+  → rebuilds the class schedule, dealer directory and personnel list
+  → derives any missing timezone from the branch, and <b>refuses to build</b>
+    if one can't be determined</pre>
+  <div class="stop"><strong>Rebuilding replaces the class schedule.</strong> Registrations are untouched
+    (they live in the database), but if a class's ID changes, its existing registrations become orphans —
+    the audit flags that. Back up <code>data/registrations.db</code> before a rebuild.</div>
+
+  <h3>The access codes</h3>
+  <p class="lead">Both Admin and FSR use <code>MMMAAA</code> today. Change them in
+     <code>data/hub_codes.json</code> — takes effect on the next request, no redeploy.</p>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p><b>M&amp;A Supply Company · Training Hub</b> — complete walkthrough, AUG 3 2026 build.</p>
+    <p style="margin-top:6px">Companion documents: <b>BLUEPRINT.html</b> (system map &amp; routes) ·
+       <b>app/docs/hub_data_blueprint.html</b> (data flows) · <b>README_WRAPUP.md</b> (setup).</p>
+    <p style="margin-top:6px">masupplycompany.com</p>
+  </div>
+</footer>
+
+</body>
+</html>

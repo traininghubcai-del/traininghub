@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>M&amp;A Training Hub – Data Blueprint (Admin View)</title>
+<style>
+  body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+       margin:0;padding:24px 40px;background:#0b1020;color:#f5f7fb}
+  .wrap{max-width:1140px;margin:0 auto}
+  h1,h2,h3{color:#f5f7fb;margin-top:1.6em}
+  h1{font-size:26px;letter-spacing:.04em;text-transform:uppercase;margin-top:0}
+  h2{font-size:20px;letter-spacing:.06em;text-transform:uppercase;color:#b0c7ff}
+  h3{font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:#94b3ff}
+  p,li,dt,dd,td,th{font-size:14px;line-height:1.6;color:#c6d4f5}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+       font-size:13px;background:#141a33;padding:2px 5px;border-radius:3px;color:#dbe4ff;
+       border:1px solid #222b4f;white-space:nowrap}
+  pre{background:#10162b;border:1px solid #222b4f;padding:14px 16px;border-radius:5px;
+      overflow:auto;font-size:13px;line-height:1.65;color:#c6d4f5}
+  pre b{color:#9fb3ff;font-weight:600}
+  pre i{color:#a9f3d5;font-style:normal}
+  pre u{color:#f3c5ff;text-decoration:none}
+  pre s{color:#7c88ad;text-decoration:none}
+  section{margin-bottom:28px}
+  .tag{display:inline-block;padding:2px 7px;border-radius:999px;font-size:11px;
+       letter-spacing:.12em;text-transform:uppercase;margin-right:6px;white-space:nowrap}
+  .tag-api{background:#172447;color:#9fb3ff}
+  .tag-data{background:#153f3a;color:#a9f3d5}
+  .tag-file{background:#3a273e;color:#f3c5ff}
+  .tag-gone{background:#42202a;color:#ffb3b3}
+  .tag-read{background:#1a2f4d;color:#9fd0ff}
+  .tag-write{background:#4a3410;color:#ffcf8f}
+  dl{margin:0}
+  dt{font-weight:600;margin-top:14px;color:#e0e7ff}
+  dd{margin:0 0 4px 16px}
+  .box{border:1px solid #202a4a;border-radius:8px;padding:14px 18px;background:#11172c;margin:14px 0}
+  .box.warn{border-color:#5a4520;background:#1c1608}
+  .box.stop{border-color:#5a2530;background:#1c0d10}
+  .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#8c9ed8;margin-bottom:6px}
+  ul{padding-left:20px}
+  hr{border:0;border-top:1px solid #222b4f;margin:24px 0}
+  table{width:100%;border-collapse:collapse;margin-top:12px}
+  th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8c9ed8;
+     padding:9px 10px;border-bottom:1px solid #2b3560}
+  td{padding:9px 10px;border-bottom:1px solid #1a2140;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  .op{border:1px solid #202a4a;border-radius:8px;background:#11172c;margin:14px 0;overflow:hidden}
+  .op-h{padding:11px 16px;background:#151d38;border-bottom:1px solid #202a4a}
+  .op-h code{background:transparent;border:0;font-size:13.5px;color:#dbe4ff}
+  .op-b{padding:12px 16px}
+  .op-b div{margin:5px 0}
+  .footer{color:#7c88ad;font-size:12px;border-top:1px solid #222b4f;padding-top:16px;margin-top:36px}
+  @media print{body{background:#fff;color:#111;padding:0}
+    h1,h2,h3,p,li,dt,dd,td,th{color:#111}
+    pre,.box,.op,code{background:#f5f7fb;color:#111;border-color:#ccd}
+    @page{margin:14mm}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Training Hub – Data Blueprint (Admin View)</h1>
+<p class="eyebrow">M&amp;A Supply · Internal data map · AUG_3 snapshot · 3 August 2026</p>
+<p>How the Training Hub stores and uses data, from an <strong>Admin / back-office perspective</strong>:
+   which files matter, what each operation <em>reads</em> and <em>writes</em>, and how a request
+   flows through the system.</p>
+
+<div class="box stop">
+  <strong>Read this first — the architecture changed.</strong>
+  Earlier drafts of this document described four separate screens (Admin Hub, Dealers Hub,
+  Edits &amp; Updates hub, public page). Those were <strong>consolidated into the class page and deleted</strong>.
+  If a document mentions <code>/admin</code>, <code>/manage</code>, <code>/dealers</code>,
+  <code>/api/admin-hub/*</code>, <code>/api/manage/*</code>, <code>src/access.py</code> or
+  <code>access_hub.json</code> as live, it is out of date — those all return
+  <span class="tag tag-gone">404</span> or no longer exist.
+</div>
+
+<hr />
+
+<section>
+  <h2>1. High-level architecture (admin mental model)</h2>
+<pre>
+[ Browser ]
+    static/index.html + static/app.js
+    ONE page per class: <b>/?event=&lt;id&gt;</b>
+    Three lenses on that page — <b>User</b> (open) · <b>Admin</b> (code) · <b>FSR</b> (code)
+
+        │  HTTP
+        ▼
+[ Python HTTP server ]
+    server.py  →  src/routes.py:Handler
+
+        │  calls internal modules
+        ├─ <b>src/hub_modes.py</b>       the three lenses + every gated action
+        ├─ <b>src/catalog.py</b>         class catalog, read-only, from Excel
+        ├─ <b>src/manage.py</b>          THE ONLY WRITER to the catalog (locked + atomic)
+        ├─ <b>src/registrations.py</b>   validates a public signup
+        ├─ <b>src/db/sqlite_repo.py</b>  the only module that imports sqlite3
+        ├─ <b>src/audit.py</b>           append-only "who changed what"
+        ├─ <b>src/reminders.py</b>       reminder history from the campaign ledger
+        └─ <b>src/reminder_letters.py</b> per-student PDF letters
+
+        │  reads / writes
+        ▼
+[ Data layer on disk ]
+    <i>data/OFFICIAL_CLASS_SCHEDULE.xlsx</i>   classes + branches
+    <i>data/registrations.db</i>               main training DB (+ audit_log)
+    <i>data/registrations.xlsx</i>             live Excel mirror of the DB
+    <i>data/class_address.json</i>             floating venue overrides
+    <i>data/fliers/</i>                        one uploaded flier per class
+    <i>data/email_campaign/outbox.xlsx</i>     reminder ledger
+    <i>data/dealers.xlsx</i>                   program dealers (typeahead)
+    <i>data/employees.xlsx</i>                 M&amp;A personnel
+
+  (design-time)
+    <u>_data_in/MASTER COPY ... _latest.xlsx</u>   single human-edited master
+    <u>tools/build_from_master.py</u>             compiles master → data/*.xlsx
+</pre>
+  <p>The browser never talks to a database. Every request goes through typed Python modules that
+     enforce structure and contracts — Excel headers, SQLite table shapes, and the access gate.</p>
+</section>
+
+<section>
+  <h2>2. Data dictionary – key folders &amp; files</h2>
+
+  <h3>2.1 Core data folder: <code>data/</code></h3>
+  <dl>
+    <dt><span class="tag tag-data">data</span> <code>data/OFFICIAL_CLASS_SCHEDULE.xlsx</code></dt>
+    <dd><strong>Source of truth for classes.</strong> 73 classes.
+      <ul>
+        <li><code>events</code> — one row per class. 19 columns: <code>event_id</code>, <code>topic</code>,
+            <code>region</code>, <code>branch</code>, <code>state</code>, <code>event_date</code>,
+            <code>start_time</code>/<code>end_time</code>, <code>timezone</code>, <code>capacity</code>,
+            <code>trainer</code>, <code>alt_trainer</code>, <code>track</code>, <code>event_location</code>,
+            <code>host_label</code>, <code>notes</code>, <code>active</code>, <code>weekday</code>, <code>status</code>.</li>
+        <li><code>branches</code> — branch names mapped to territory manager; feeds branch dropdowns.</li>
+      </ul>
+      <span class="tag tag-read">Read by</span> <code>src/catalog.py</code>, <code>src/manage.py</code>,
+      <code>src/qr_pack.py</code>, <code>src/email_campaign.py</code> — re-read on <em>every</em> request, never cached.<br />
+      <span class="tag tag-write">Written by</span> <code>src/manage.py</code> only, under a lock, saved atomically.
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/registrations.db</code></dt>
+    <dd><strong>Primary training database (SQLite).</strong> Tables:
+      <code>events</code> (cache), <code>companies</code>, <code>people</code>, <code>registrations</code>,
+      <code>registration_attendees</code> (grading columns), <code>class_log</code> (close-out),
+      <strong><code>audit_log</code></strong> (who changed what).<br />
+      <span class="tag tag-read">Read/write via</span> <code>src/db/sqlite_repo.py:SqliteRepository</code> only.<br />
+      <strong>This is the file to back up — it cannot be regenerated.</strong>
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/registrations.xlsx</code></dt>
+    <dd><strong>Live Excel mirror of registrations.</strong> Column order from <code>config.COLUMNS</code>,
+      matching John's original sheet.<br />
+      <span class="tag tag-write">Written by</span> <code>src/export.write_registrations_xlsx()</code>
+      after every submit or removal. Read by humans only.
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/class_address.json</code></dt>
+    <dd><strong>Floating venue overrides.</strong> <code>{event_id: "street address"}</code>.
+      Empty means "use the branch location". Deliberately <em>not</em> a catalog column, so a venue
+      change never rewrites the schedule table.<br />
+      <span class="tag tag-write">Written by</span> <code>src/class_address.py</code> (Admin lens).
+      Delete it and every class falls back to its branch.
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/fliers/</code></dt>
+    <dd><strong>Per-class vendor artwork.</strong> Files named <code>&lt;event_id&gt;.&lt;ext&gt;</code>
+      plus <code>_index.json</code> holding the original filename, size and upload date.
+      JPG/PNG/WEBP/PDF, 8 MB cap, magic-byte validated.<br />
+      <span class="tag tag-write">Written by</span> <code>src/fliers.py</code> (Admin lens).
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/email_campaign/</code></dt>
+    <dd><strong>Reminder engine state.</strong>
+      <ul>
+        <li><code>outbox.xlsx</code> — <strong>the reminder ledger</strong>. One row per letter.
+            Used for dedupe by the sender <em>and</em> for admin reporting.</li>
+        <li><code>campaign_schedule.xlsx</code> — planned 7/3/1-day sends.</li>
+        <li><code>emails/</code> — generated HTML bodies + <code>.ics</code> invites.</li>
+      </ul>
+      <span class="tag tag-write">Written by</span> <code>src/email_campaign.py</code> and
+      <code>src/reminder_letters.log_generated()</code>.<br />
+      <span class="tag tag-read">Read by</span> <code>src/reminders.py</code> for the per-class totals.
+    </dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/hub_codes.json</code></dt>
+    <dd>Per-lens access codes. If absent, all three lenses use the built-in default
+      (<code>MMMAAA</code> today). Change codes here — no code edit, no redeploy.</dd>
+
+    <dt><span class="tag tag-data">data</span> <code>data/dealers.xlsx</code> · <code>data/employees.xlsx</code></dt>
+    <dd><strong>PII.</strong> 224 program dealers (feeds the company typeahead and resolves account # + TM)
+      and M&amp;A personnel. Both compiled from the master workbook.<br />
+      <span class="tag tag-read">Read by</span> <code>src/dealers.py</code>.
+    </dd>
+
+    <dt><span class="tag tag-gone">legacy</span> <code>access_hub.json</code> · <code>access_codes.xlsx</code> · <code>edit_code.txt</code></dt>
+    <dd>Left behind by the removed access hub and edit-code system. <strong>Nothing reads them.</strong>
+      Safe to delete.</dd>
+  </dl>
+
+  <h3>2.2 Master data folder: <code>_data_in/</code> (design-time)</h3>
+  <dl>
+    <dt><span class="tag tag-data">_data_in</span> <code>MASTER COPY  Training Hub Info Phase 1_latest.xlsx</code></dt>
+    <dd><strong>The single human-edited workbook</strong> (3 Aug 2026). Sheets:
+      <code>Tech Team Calendar</code> (92 rows), <code>M&amp;A Personnel</code> (170),
+      <code>Top Tier Dealers</code> (225), and five Regional-Manager territory sheets
+      (Arkansas · West TN · Central TN &amp; Huntsville · Alabama &amp; Florida · East TN).<br />
+      Build tools read this and emit <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code>,
+      <code>dealers.xlsx</code>, <code>employees.xlsx</code>.
+      <div class="box warn" style="margin-top:10px">
+        <strong>Not loaded yet.</strong> <code>tools/build_from_master.py</code> reads a sheet named
+        <code>"Tier 1 Dealers"</code>, which this workbook renames to <code>"Top Tier Dealers"</code> —
+        the build would fail. Update the tool, rebuild, then verify with the audit before trusting it.
+      </div>
+    </dd>
+  </dl>
+</section>
+
+<section>
+  <h2>3. Operation flows — what reads / writes what</h2>
+
+  <h3>3.1 Unlocking a lens</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/unlock</code></div>
+    <div class="op-b">
+      <div><strong>Input</strong>: <code>{mode, code}</code> where mode is <code>admin</code> or <code>fsr</code>.</div>
+      <div><strong>Backend</strong>: <code>src/hub_modes.unlock()</code> → <code>verify()</code>, which compares
+        against <code>data/hub_codes.json</code> (or the built-in default).</div>
+      <div><span class="tag tag-read">Reads</span> <code>data/hub_codes.json</code></div>
+      <div><span class="tag tag-write">Writes</span> nothing.</div>
+      <div><strong>Note</strong>: the browser stores the accepted code in <code>sessionStorage</code>,
+        so elevated access dies with the browser session. The code list itself never reaches the client.</div>
+    </div>
+  </div>
+
+  <h3>3.2 Class list — public and admin</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>GET /api/events</code> &nbsp;·&nbsp;
+      <code>GET /api/hub/classes?mode=admin&amp;code=…</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>catalog.public_events()</code> /
+        <code>hub_modes.classes_overview()</code>.</div>
+      <div><span class="tag tag-read">Reads</span>
+        <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code> (classes, fresh) ·
+        <code>registrations.db</code> (seat counts, grading state, close-out) ·
+        <code>email_campaign/outbox.xlsx</code> (reminder history)</div>
+      <div><span class="tag tag-write">Writes</span> nothing — pure read model.</div>
+      <div><strong>Difference</strong>: the public list carries no counts. The admin overview adds
+        registered/capacity, life-cycle status, last reminder date, reminder count and branch options.</div>
+    </div>
+  </div>
+
+  <h3>3.3 Opening one class through a lens</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>GET /api/hub/class?event_id=…&amp;mode=…&amp;code=…</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.class_payload()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> catalog · <code>class_address.json</code> ·
+        <code>fliers/_index.json</code> · and, <strong>only for Admin/FSR</strong>,
+        the roster and grades from <code>registrations.db</code>.</div>
+      <div><span class="tag tag-write">Writes</span> nothing.</div>
+      <div><strong>The gate lives here.</strong> A locked lens is not sent the roster at all — it is not
+        hidden in the payload for JavaScript to filter. Verified by the audit:
+        the user payload contains no roster and no email addresses.</div>
+    </div>
+  </div>
+
+  <h3>3.4 A dealer registers</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/register</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>registrations.build_registration()</code> →
+        <code>SqliteRepository.save_registration(reg, capacity)</code>.</div>
+      <div><span class="tag tag-read">Reads</span> catalog (to validate the class + capacity) ·
+        <code>dealers.xlsx</code> (resolve account # and TM from the company name)</div>
+      <div><span class="tag tag-write">Writes</span>
+        <code>registrations.db</code> (<code>registrations</code>, <code>registration_attendees</code>,
+        <code>companies</code>, <code>people</code>, <code>events</code> cache) ·
+        <code>registrations.xlsx</code> (mirror) · <code>audit_log</code></div>
+      <div><strong>Capacity is enforced inside the write transaction</strong> (<code>BEGIN IMMEDIATE</code>),
+        not before it. Checking first is a race — two people going for the last seat would both win.</div>
+      <div><strong>Failure mode</strong>: if the xlsx mirror write fails, the DB row still committed;
+        the server logs a warning and the registration stands.</div>
+    </div>
+  </div>
+
+  <h3>3.5 Admin edits a class</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/save-class</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.save_class()</code> → <code>manage.update_class()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> catalog (before-snapshot for the audit entry) ·
+        <code>registrations.db</code> (seats booked, so capacity can't drop below them)</div>
+      <div><span class="tag tag-write">Writes</span>
+        <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code> (table columns) ·
+        <code>class_address.json</code> (address only) · <code>audit_log</code></div>
+      <div><strong>Two-pass</strong>: the UI diffs against the loaded values, shows exactly what will change,
+        and asks for the code again. <strong>Only changed fields are sent</strong>, so a stale field
+        can't overwrite someone else's edit.</div>
+      <div><strong>Concurrency</strong>: the write is serialised by a lock and saved atomically
+        (temp file + rename). Two overlapping saves previously corrupted the workbook.</div>
+    </div>
+  </div>
+
+  <h3>3.6 Admin adds a class</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/create-class</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.create_class()</code> → <code>manage.create_class()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> catalog — to inherit the branch's settled facts</div>
+      <div><span class="tag tag-write">Writes</span> a new row in <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code> ·
+        optional <code>class_address.json</code> · <code>audit_log</code></div>
+      <div><strong>Only three inputs are required</strong> — branch, class name, date. State, timezone,
+        venue, host line, level and trainer are copied from the classes already running at that branch,
+        so a new class arrives complete instead of half-blank.</div>
+    </div>
+  </div>
+
+  <h3>3.7 FSR grades and closes a class</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/grade</code> ·
+      <code>/api/hub/close-class</code> · <code>/api/hub/reopen-class</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.save_grades()</code> / <code>close_class()</code> /
+        <code>reopen_class()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> roster + current grades from <code>registrations.db</code></div>
+      <div><span class="tag tag-write">Writes</span>
+        <code>registration_attendees</code> (<code>attended</code>, <code>passed</code>, <code>score</code>,
+        <code>comment</code>, <code>graded_by</code>, <code>graded_at</code>) ·
+        <code>class_log.closed_at</code> · <code>audit_log</code></div>
+      <div><strong>Rules enforced</strong>: grading opens only after the class date has passed;
+        a student marked absent can never be marked passed; scores clamp to 0–100;
+        an attendee id from another class is ignored; close-out is blocked while anyone is ungraded.</div>
+      <div><strong>No email is sent.</strong> Closing is the finish line — when a provider is wired in,
+        it attaches to <code>close_class()</code>.</div>
+    </div>
+  </div>
+
+  <h3>3.8 Admin generates reminder letters</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/reminders</code> →
+      <code>GET /reminder-letter?…</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.reminder_letters()</code> →
+        <code>reminder_letters.log_generated()</code> and <code>render_pdf()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> catalog (class details) · roster from
+        <code>registrations.db</code></div>
+      <div><span class="tag tag-write">Writes</span>
+        <code>email_campaign/outbox.xlsx</code> (one row per letter) · <code>audit_log</code></div>
+      <div><strong>Generating counts as sent</strong> — there is no mail system, so a printed letter
+        <em>is</em> the send. It writes to the same ledger the email sender uses, so both can never disagree.</div>
+      <div><strong>One reminder = one day.</strong> Re-running the same day does not inflate the count.</div>
+      <div><strong>PDFs are never written to disk</strong> — built in memory and streamed.</div>
+    </div>
+  </div>
+
+  <h3>3.9 Admin removes a registration</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>POST /api/hub/remove-registration</code></div>
+    <div class="op-b">
+      <div><strong>Backend</strong>: <code>hub_modes.remove_registration()</code>.</div>
+      <div><span class="tag tag-read">Reads</span> <code>SqliteRepository.registration_snapshot()</code> —
+        the full record, captured <em>before</em> deletion</div>
+      <div><span class="tag tag-write">Writes</span> deletes from <code>registrations</code> +
+        <code>registration_attendees</code> · rewrites <code>registrations.xlsx</code> ·
+        <code>audit_log</code> (with the snapshot)</div>
+      <div><strong>This is a hard delete.</strong> The audit snapshot records company, email, branch,
+        seats and attendee names, so a removal is reconstructable — but it is not one-click undoable.</div>
+    </div>
+  </div>
+
+  <h3>3.10 Custom flier</h3>
+  <div class="op">
+    <div class="op-h"><span class="tag tag-api">API</span> <code>GET/POST /api/hub/flier</code> ·
+      <code>GET /flier/&lt;event_id&gt;</code></div>
+    <div class="op-b">
+      <div><span class="tag tag-read">Reads</span> <code>data/fliers/_index.json</code></div>
+      <div><span class="tag tag-write">Writes</span> <code>data/fliers/&lt;event_id&gt;.&lt;ext&gt;</code> + index</div>
+      <div>Upload is base64 inside JSON (the stdlib server has no multipart parser, and <code>cgi</code>
+        was removed in Python 3.13). Validated on extension <em>and</em> magic bytes, capped at 8 MB.</div>
+      <div>The public <code>/flier/&lt;id&gt;</code> route resolves the filename <strong>from the index,
+        never from the URL</strong>, so the path cannot be walked out of <code>data/fliers/</code>.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>4. The audit log — answering "who did that?"</h2>
+  <p>Every mutation writes one append-only row to <code>audit_log</code> in
+     <code>data/registrations.db</code>. It never raises (a logging failure must not fail a user's action)
+     and app code never updates or deletes entries.</p>
+  <table>
+    <thead><tr><th>Column</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td><code>at</code></td><td>ISO timestamp</td></tr>
+      <tr><td><code>actor</code></td><td>which lens acted — <code>admin</code>, <code>fsr</code>, <code>public</code></td></tr>
+      <tr><td><code>action</code></td><td><code>class.create</code>, <code>class.update</code>, <code>class.close</code>,
+        <code>class.reopen</code>, <code>grades.save</code>, <code>reminders.generate</code>,
+        <code>registration.create</code>, <code>registration.remove</code></td></tr>
+      <tr><td><code>target</code></td><td><code>event_id</code></td></tr>
+      <tr><td><code>detail</code></td><td>JSON — for edits, the <strong>before → after</strong> of each changed field;
+        for removals, the full snapshot of what was deleted</td></tr>
+      <tr><td><code>ip</code></td><td>client address on public registrations</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>5. What to verify when several people have edit power</h2>
+  <pre><i>./.venv/bin/python tools/data_audit.py --server</i></pre>
+  <p>30+ assertions, exit code 0 = clean, read-only, safe any time. Run it after anyone edits the workbook.</p>
+  <ul>
+    <li><strong>Excel contracts</strong> — <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code> keeps its expected
+      headers; unique non-blank <code>event_id</code>; dates parse; end time after start time;
+      capacity numeric; <strong>every timed class states a timezone</strong> and each branch uses one zone.</li>
+    <li><strong>DB contracts</strong> — <code>SqliteRepository.init()</code> runs at start and migrates
+      missing columns; no orphan or childless registrations; every registration has a contact email;
+      <code>num_attending</code> matches the attendee rows; <strong>no class overbooked</strong>;
+      scores 0–100; nobody passed while absent.</li>
+    <li><strong>Mirrors</strong> — <code>registrations.xlsx</code> row count matches the DB;
+      no ghost classes in the address overlay, flier index or reminder ledger;
+      every flier record has its file on disk.</li>
+    <li><strong>Access</strong> — Admin and FSR both refuse without a code;
+      the user payload carries <strong>no roster and no email addresses</strong>.</li>
+    <li><strong>Audit</strong> — the <code>audit_log</code> table exists and is recording.</li>
+  </ul>
+
+  <div class="box warn">
+    <strong>The one thing the app cannot protect you from:</strong> the catalog write lock is
+    per-process. If John has <code>OFFICIAL_CLASS_SCHEDULE.xlsx</code> open in Excel while the server
+    saves, Excel can still clobber it. Back up <code>data/registrations.db</code> and the catalog
+    before any session where several people are editing.
+  </div>
+</section>
+
+<p class="footer">
+  M&amp;A Supply Company · Training Hub — data blueprint, AUG_3 snapshot, 3 August 2026.<br />
+  Generated from the live codebase. A companion overview lives at
+  <code>_MandA_AUG_3/BLUEPRINT.html</code>. Toll Free 855-465-7773 · masupplycompany.com
+</p>
+
+</div>
+</body>
+</html>

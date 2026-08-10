@@ -1,0 +1,14 @@
+# Global chatbot settings. Pure config — no secrets here except demo keys live
+# in tm_keys.yaml. Everything is read through chat_src.paths (sandboxed).
+
+base_url: "http://localhost:8000"
+
+# Simulated-data mode. While true the chatbot only ever touches the *_sim.csv
+# files in data_global/. Flip off later when wiring real data.
+simulated_data: true
+
+# Files the chatbot loads from data_global/ (filenames only, no paths).
+data_files:
+  classes: "classes_sim.csv"
+  registrations: "registrations_sim.csv"
+  dealers: "dealers_sim.csv"

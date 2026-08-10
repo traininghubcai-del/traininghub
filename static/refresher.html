@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="only light" />
+<title>M&amp;A Supply — Refresher invites</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0a2540; --navy-2:#0e3a66; --blue:#1d6fc2; --blue-soft:#e9f1fa;
+    --red:#c0392b; --mint:#1fb178; --ink:#16222f; --muted:#56697a; --bg:#f3f6fa; --line:#d9e2ec;
+    --display:"Saira",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{width:min(900px,94vw);margin:0 auto}
+  h1,h2,h3{font-family:var(--display);color:var(--navy)}
+  .top{background:linear-gradient(135deg,#7a1f1f,var(--red));color:#fff;padding:18px 0}
+  .top .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .top h1{color:#fff;font-size:1.1rem;font-weight:800}
+  .logo-chip{display:inline-flex;align-items:center;margin-left:0 !important}
+  .logo-chip img{height:30px;display:block;}
+  .top .tag{font-family:var(--display);font-weight:800;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3)}
+  .top a{margin-left:auto;color:#f5cfc9;font-size:.86rem;text-decoration:none}
+  main{padding:34px 0 70px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgba(10,37,64,.07);padding:28px;margin-bottom:24px}
+  .meta{color:var(--muted);font-size:.95rem;margin-top:4px}
+  .coach{background:#fdf3e7;border:1.5px solid #f0d4ab;border-radius:12px;padding:14px 18px;margin-top:16px;font-size:.93rem;color:#7a5c14}
+
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:12px}
+  th{font-family:var(--display);font-weight:700;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:2px solid var(--line)}
+  td{padding:9px 12px;border-bottom:1px solid var(--line)}
+  .flag{font-family:var(--display);font-weight:800;color:var(--red)}
+
+  .mail-frame{border:2px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 18px 44px rgba(10,37,64,.12)}
+  .mail-head{background:#f6f8fb;border-bottom:1px solid var(--line);padding:14px 20px;font-size:.85rem;color:var(--muted)}
+  .mail-head b{color:var(--ink)}
+  .mail-head .subj{font-size:1rem;color:var(--navy);font-weight:700;margin-top:4px}
+  .mail-body{padding:28px 30px;background:#fff;font-size:.97rem}
+  .mail-body p{margin:0 0 14px}
+  .mail-brand{background:#fff;border-bottom:3px solid var(--blue);padding:14px 30px;display:flex;align-items:center;gap:14px}
+  .mail-brand img{height:36px}
+  .mail-brand span{font-family:var(--display);font-weight:700;font-size:.78rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+  .mail-brand em{font-style:normal;color:#9ad7bd}
+  .class-link{display:block;background:var(--blue-soft);border:1px solid #cbdcf0;border-radius:8px;padding:10px 14px;margin:6px 0;text-decoration:none;color:var(--navy);font-weight:600}
+  .class-link span{color:var(--muted);font-weight:400;font-size:.85rem}
+  .tm-btn{display:inline-block;background:#fff;border:2px solid var(--red);color:var(--red);font-family:var(--display);font-weight:800;padding:11px 22px;border-radius:8px;text-decoration:none;margin-top:6px}
+  .mail-sig{border-top:1px solid var(--line);margin-top:18px;padding-top:14px;color:var(--muted);font-size:.9rem}
+  .mail-sig b{color:var(--navy)}
+  .pick{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--body);font-size:.95rem;background:#fff;margin-left:auto}
+  .preview-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+
+  .final{background:linear-gradient(135deg,#7a1f1f,var(--red));color:#fff;border-radius:16px;padding:28px;text-align:center}
+  .final h3{color:#fff;font-size:1.25rem}
+  .final p{color:#f5dcd7;font-size:.95rem;max-width:60ch;margin:10px auto 0}
+  .final button{margin-top:18px;padding:14px 32px;border:none;border-radius:8px;background:#fff;color:var(--red);font-family:var(--display);font-weight:900;font-size:1rem;cursor:pointer}
+  .final button:disabled{opacity:.65;cursor:not-allowed}
+  .final .done{margin-top:14px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <a class="logo-chip" href="/" title="Back to the Training Hub"><img src="/static/logos/ma-emblem.png?v=3" alt="M&amp;A Supply" /></a>
+    <h1>TRAINING ADMIN HUB</h1>
+    <span class="tag">Refresher invites</span>
+    <a href="/">← Back to classes</a>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2 id="class-title">Loading…</h2>
+    <p class="meta" id="class-meta"></p>
+    <div class="coach">📣 <b>We encourage these students to take the class again</b> and review
+      the class materials before the next attempt. One invite covers the whole list — and their
+      Territory Manager gets looped in so registration happens ASAP.</div>
+    <table>
+      <thead><tr><th>Student</th><th>Dealer</th><th>Score</th><th>Flag</th><th>Email</th></tr></thead>
+      <tbody id="low-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="preview-head">
+      <h3 style="font-size:1.05rem">📧 The refresher email, per student</h3>
+      <select class="pick" id="student-pick"></select>
+    </div>
+    <div class="mail-frame">
+      <div class="mail-brand"><img src="/static/logos/ma-logo-horizontal.png?v=4" alt="M&amp;A Supply Company Inc." /><span>Training &amp; Technical Services</span></div>
+      <div class="mail-head">
+        <div>From: <b>traininghubcai@gmail.com</b> &nbsp;·&nbsp; To: <b id="m-to"></b></div>
+        <div class="subj" id="m-subject"></div>
+      </div>
+      <div class="mail-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <div class="final">
+    <h3>📨 Invite these <span id="n-low">0</span> to a refresher</h3>
+    <p>One action for the whole class — every flagged student gets the email above with the
+       upcoming class dates, and their <b>Territory Manager is notified</b> so registration
+       happens ASAP. (Simulated send — demo session.)</p>
+    <button id="invite-btn">Send refresher invites</button>
+    <div class="done" id="invite-done"></div>
+  </div>
+
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const CODE = params.get("code") || "";
+const EVENT = params.get("event_id") || "";
+let low = [], cls = null, upcoming = [], trainer = "";
+
+function fmtDate(iso) {
+  const d = new Date(iso + "T12:00:00");
+  return isNaN(d) ? iso : d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function emailFor(s) {
+  const first = s.name.split(" ")[0];
+  const list = upcoming.length
+    ? upcoming.map(c => `<a class="class-link" href="${location.origin}/?event=${c.event_id}">
+        ${c.topic} — ${c.region} <span>· ${fmtDate(c.event_date)} · ${c.start_time}–${c.end_time} · register →</span></a>`).join("")
+    : "<p><i>No upcoming dates posted yet for this topic.</i></p>";
+  return {
+    to: s.contact_email,
+    subject: `Let's run it back — a refresher for ${cls.topic}`,
+    body: `
+      <p>Hi <b>${first}</b>,</p>
+      <p>Your checkup for <b>${cls.topic}</b> ${s.score != null ? `came in at <b>${s.score}%</b>` : "came back <b>below the passing bar</b>"} —
+         no problem, this material is dense. <b>We encourage you to take the class again</b> and
+         review the class materials before your next attempt, so the badge is yours next time.</p>
+      <p><b>Upcoming ${cls.topic} classes:</b></p>
+      ${list}
+      <p style="margin-top:14px"><b>We encourage you to communicate with your Territory Manager ASAP</b>
+         to lock in a seat for the refresher — we've already let them know.</p>
+      <p><a class="tm-btn" href="${location.origin}/notify-tm?student_id=${s.attendee_id}&event_id=${EVENT}">
+         No classes available? Click here to notify your TM you want a refresher →</a></p>
+      <div class="mail-sig">You've got this,<br/>
+        <b>${trainer}</b><br/>Training &amp; Technical Services · M&amp;A Supply</div>`,
+  };
+}
+
+function renderMail(s) {
+  const m = emailFor(s);
+  $("m-to").textContent = m.to;
+  $("m-subject").textContent = m.subject;
+  $("m-body").innerHTML = m.body;
+}
+
+async function load() {
+  const [cRes, rRes] = await Promise.all([
+    fetch(`/api/admin-hub/classes?code=${encodeURIComponent(CODE)}`),
+    fetch(`/api/admin-hub/roster?code=${encodeURIComponent(CODE)}&event_id=${encodeURIComponent(EVENT)}`),
+  ]);
+  const cData = await cRes.json(), rData = await rRes.json();
+  cls = (cData.classes || []).find(c => c.event_id === EVENT);
+  trainer = (cData.session || {}).display_name || "Your trainer";
+  if (!cls) { $("class-title").textContent = "Class not found"; return; }
+  upcoming = (cData.classes || []).filter(c => c.topic === cls.topic && c.status_timing === "upcoming");
+
+  low = (rData.students || []).filter(s =>
+    s.attended === 1 && ((s.score != null && s.score <= 70) || s.passed === 0));
+
+  $("class-title").textContent = `${cls.topic} — ${cls.region}, ${fmtDate(cls.event_date)}`;
+  $("class-meta").textContent = `${low.length} of ${(rData.students || []).length} students flagged for a refresher`;
+  $("n-low").textContent = low.length;
+
+  $("low-body").innerHTML = low.map(s => `
+    <tr>
+      <td><b>${s.name}</b></td><td>${s.company_name || "—"}</td>
+      <td>${s.score ?? "—"}</td><td class="flag">⛔ needs refresher</td><td>${s.contact_email}</td>
+    </tr>`).join("") || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">🎉 Nobody needs a refresher — nothing to do here.</td></tr>';
+
+  $("student-pick").innerHTML = low.map((s, i) => `<option value="${i}">${s.name} — ${s.company_name || ""}</option>`).join("");
+  $("student-pick").addEventListener("change", () => renderMail(low[+$("student-pick").value]));
+  if (low.length) renderMail(low[0]); else $("invite-btn").disabled = true;
+}
+
+$("invite-btn").addEventListener("click", () => {
+  const names = low.map(s => s.name).join(", ");
+  $("invite-done").innerHTML =
+    `✓ ${low.length} student${low.length === 1 ? " was" : "s were"} sent a refresher invite (simulated): ${names}.<br/>
+     Their Territory Managers were notified for ASAP registration.`;
+  $("invite-btn").disabled = true;
+  $("invite-btn").textContent = "✓ Refresher invites sent";
+});
+
+load();
+</script>
+</body>
+</html>

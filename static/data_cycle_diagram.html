@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>M&amp;A Training — Data Cycle Diagram</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="only light" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Saira:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --navy:#0a2540; --navy-2:#0e3a66; --navy-deep:#06192e;
+      --blue:#1d6fc2; --blue-soft:#e9f1fa; --line:#d9e2ec;
+      --ink:#16222f; --muted:#56697a; --bg:#f3f6fa;
+      --ok:#1f8a4c; --today:#c0392b;
+      --display:"Saira",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+      --shadow:0 10px 30px rgba(10,37,64,.10);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:var(--body);background:var(--bg);color:var(--ink)}
+    a{color:var(--blue);text-decoration:none}
+    .ma-header{background:var(--navy);color:#fff;position:sticky;top:0;z-index:50;border-bottom:3px solid var(--blue)}
+    .ma-wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+    .ma-header-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+    .ma-brand{display:flex;align-items:center;gap:12px}
+    .ma-brand-title{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:.04em;color:#fff}
+    .ma-nav a{font-family:var(--display);font-weight:600;font-size:.85rem;color:#d7e3f0;margin-left:18px}
+    .ma-nav a:hover{color:#fff}
+    .head{padding:26px 0 6px}
+    .pill{display:inline-block;padding:5px 12px;border-radius:999px;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--line);color:var(--blue);background:#fff;margin-bottom:10px}
+    h1{font-family:var(--display);font-weight:800;font-size:clamp(1.4rem,3vw,2rem);color:var(--navy);margin:0 0 6px}
+    .sub{color:var(--muted);font-size:14px;max-width:760px;margin:0 0 4px}
+    .board{max-width:1200px;margin:14px auto 60px;padding:0 20px}
+    .canvas{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:16px;overflow-x:auto}
+    svg{display:block;width:100%;min-width:1040px;height:auto}
+    /* svg text styles */
+    .stage{font-family:var(--display);font-weight:800;font-size:14px;letter-spacing:.06em;fill:#fff}
+    .btitle{font-family:var(--display);font-weight:600;font-size:13px;fill:var(--navy)}
+    .bsub{font-family:var(--body);font-weight:500;font-size:11px;fill:var(--muted)}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;fill:var(--navy-2)}
+    .dbrow{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;fill:#fff}
+    .dbhead{font-family:var(--display);font-weight:700;font-size:13px;fill:var(--navy)}
+    .flowlbl{font-family:var(--display);font-weight:700;font-size:10px;letter-spacing:.08em;fill:var(--blue);text-transform:uppercase}
+    .looplbl{font-family:var(--display);font-weight:700;font-size:11px;letter-spacing:.06em;fill:var(--navy-2)}
+    .box{fill:#fff;stroke:var(--line);stroke-width:1.5}
+    .accent{fill:var(--blue)}
+    .plan{fill:#8a5a00;font-family:var(--body);font-weight:700;font-size:9.5px}
+    .live{fill:var(--ok);font-family:var(--body);font-weight:700;font-size:9.5px}
+    .legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:12px;font-size:12.5px;color:var(--ink)}
+    .lg{display:inline-flex;align-items:center;gap:7px}
+    .d{width:11px;height:11px;border-radius:50%}
+  </style>
+</head>
+<body>
+  <header class="ma-header">
+    <div class="ma-wrap ma-header-inner">
+      <a class="ma-brand" href="/">
+        <img src="/static/logos/ma-emblem.png?v=3" alt="M&amp;A Supply" style="height:40px;display:block" />
+        <span class="ma-brand-title">DATA&nbsp;<em>CYCLE</em></span>
+      </a>
+      <nav class="ma-nav">
+        <a href="/">Home</a>
+        <a href="/data-cycle">Card Map</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="ma-wrap head">
+    <span class="pill">M&amp;A Training • Line / Box Diagram</span>
+    <h1>Training data cycle — capture → store → enrich → use → feedback</h1>
+    <p class="sub">The landing page and QR codes feed one database; the Admin and Dealers hubs read from it; insights loop back as next month's targeting.</p>
+  </div>
+
+  <div class="board">
+    <div class="canvas">
+      <svg viewBox="0 0 1320 640" role="img" aria-label="Data cycle flow diagram">
+        <defs>
+          <marker id="arrow" markerWidth="11" markerHeight="11" refX="8" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#1d6fc2"/>
+          </marker>
+          <marker id="arrowUp" markerWidth="11" markerHeight="11" refX="4" refY="2" orient="auto">
+            <path d="M0,0 L4,8 L8,0 Z" fill="#1d6fc2"/>
+          </marker>
+        </defs>
+
+        <!-- ===== STAGE HEADER PILLS ===== -->
+        <g>
+          <rect x="20"   y="18" width="220" height="34" rx="9" fill="#0a2540"/>
+          <text class="stage" x="130"  y="40" text-anchor="middle">1 · CAPTURE</text>
+          <rect x="285"  y="18" width="220" height="34" rx="9" fill="#0e3a66"/>
+          <text class="stage" x="395"  y="40" text-anchor="middle">2 · STORE</text>
+          <rect x="550"  y="18" width="220" height="34" rx="9" fill="#0a2540"/>
+          <text class="stage" x="660"  y="40" text-anchor="middle">3 · ENRICH</text>
+          <rect x="815"  y="18" width="220" height="34" rx="9" fill="#0e3a66"/>
+          <text class="stage" x="925"  y="40" text-anchor="middle">4 · USE</text>
+          <rect x="1080" y="18" width="220" height="34" rx="9" fill="#0a2540"/>
+          <text class="stage" x="1190" y="40" text-anchor="middle">5 · FEEDBACK / AI</text>
+        </g>
+
+        <!-- ===== MAIN SPINE ARROWS (between stages) ===== -->
+        <g stroke="#1d6fc2" stroke-width="2.5" fill="none">
+          <line x1="242" y1="270" x2="281" y2="270" marker-end="url(#arrow)"/>
+          <line x1="507" y1="270" x2="546" y2="270" marker-end="url(#arrow)"/>
+          <line x1="772" y1="270" x2="811" y2="270" marker-end="url(#arrow)"/>
+          <line x1="1037" y1="270" x2="1076" y2="270" marker-end="url(#arrow)"/>
+        </g>
+        <g>
+          <text class="flowlbl" x="261" y="258" text-anchor="middle">normalize</text>
+          <text class="flowlbl" x="526" y="258" text-anchor="middle">derive</text>
+          <text class="flowlbl" x="791" y="258" text-anchor="middle">read</text>
+          <text class="flowlbl" x="1056" y="258" text-anchor="middle">act on</text>
+        </g>
+
+        <!-- ===== 1. CAPTURE boxes ===== -->
+        <g>
+          <rect class="box" x="20" y="72" width="220" height="46" rx="10"/><rect class="accent" x="20" y="82" width="4" height="26" rx="2"/>
+          <text class="btitle" x="36" y="94">Landing / class page</text>
+          <text class="mono"   x="36" y="110">form → POST /api/register</text>
+
+          <rect class="box" x="20" y="126" width="220" height="40" rx="10"/><rect class="accent" x="20" y="136" width="4" height="20" rx="2"/>
+          <text class="btitle" x="36" y="146">Registration QR</text>
+          <text class="mono"   x="36" y="160">printed flyers → qr/</text>
+
+          <rect class="box" x="20" y="174" width="220" height="40" rx="10"/><rect class="accent" x="20" y="184" width="4" height="20" rx="2"/>
+          <text class="btitle" x="36" y="194">Attendance QR</text>
+          <text class="plan"   x="36" y="208">planned — marks "present"</text>
+
+          <rect class="box" x="20" y="222" width="220" height="52" rx="10"/><rect class="accent" x="20" y="232" width="4" height="32" rx="2"/>
+          <text class="btitle" x="36" y="242">Excel lists (editable)</text>
+          <text class="mono"   x="36" y="257">events · dealers ·</text>
+          <text class="mono"   x="36" y="270">employees .xlsx</text>
+
+          <rect class="box" x="20" y="282" width="220" height="52" rx="10"/><rect class="accent" x="20" y="292" width="4" height="32" rx="2"/>
+          <text class="btitle" x="36" y="302">Access keys (paid layer)</text>
+          <text class="mono"   x="36" y="317">tm_keys.yaml · codes.xlsx</text>
+          <text class="mono"   x="36" y="330">access_hub.json (seats)</text>
+        </g>
+
+        <!-- ===== 2. STORE — database cylinder ===== -->
+        <g>
+          <text class="dbhead" x="395" y="86" text-anchor="middle">registrations.db</text>
+          <path d="M285 108 a110 16 0 0 1 220 0 v300 a110 16 0 0 1 -220 0 Z" fill="#0e3a66" stroke="#0a2540" stroke-width="1.5"/>
+          <ellipse cx="395" cy="108" rx="110" ry="16" fill="#1d6fc2" stroke="#0a2540" stroke-width="1.5"/>
+          <text class="dbrow" x="305" y="150">events  <tspan class="mono" fill="#9fc4ec">← events.xlsx</tspan></text>
+          <text class="dbrow" x="305" y="188">companies</text>
+          <text class="dbrow" x="305" y="226">people</text>
+          <line x1="300" y1="245" x2="490" y2="245" stroke="#3b5a7d" stroke-width="1" stroke-dasharray="3 3"/>
+          <text class="dbrow" x="305" y="272">registrations</text>
+          <text class="dbrow" x="305" y="310">registration_attendees</text>
+          <text class="mono" x="305" y="352" fill="#9fc4ec">+ grading: attended,</text>
+          <text class="mono" x="305" y="368" fill="#9fc4ec">passed, score, graded_by</text>
+        </g>
+
+        <!-- ===== 3. ENRICH boxes ===== -->
+        <g>
+          <rect class="box" x="550" y="86" width="220" height="42" rx="10"/><rect class="accent" x="550" y="96" width="4" height="22" rx="2"/>
+          <text class="btitle" x="566" y="105">Seats taken / remaining</text>
+          <text class="bsub"   x="566" y="120">vs. class capacity</text>
+
+          <rect class="box" x="550" y="136" width="220" height="52" rx="10"/><rect class="accent" x="550" y="146" width="4" height="32" rx="2"/>
+          <text class="btitle" x="566" y="155">Status colors</text>
+          <circle cx="572" cy="172" r="5" fill="#1d6fc2"/><text class="bsub" x="583" y="176">past</text>
+          <circle cx="628" cy="172" r="5" fill="#c0392b"/><text class="bsub" x="639" y="176">today</text>
+          <circle cx="694" cy="172" r="5" fill="#1f8a4c"/><text class="bsub" x="705" y="176">upcoming</text>
+
+          <rect class="box" x="550" y="196" width="220" height="42" rx="10"/><rect class="accent" x="550" y="206" width="4" height="22" rx="2"/>
+          <text class="btitle" x="566" y="215">Grading status</text>
+          <text class="bsub"   x="566" y="230">graded vs. needs grades</text>
+
+          <rect class="box" x="550" y="246" width="220" height="42" rx="10"/><rect class="accent" x="550" y="256" width="4" height="22" rx="2"/>
+          <text class="btitle" x="566" y="265">Dealer ↔ TM mapping</text>
+          <text class="bsub"   x="566" y="280">territory per registration</text>
+
+          <rect class="box" x="550" y="296" width="220" height="46" rx="10"/><rect class="accent" x="550" y="306" width="4" height="26" rx="2"/>
+          <text class="btitle" x="566" y="315">Training history + KPIs</text>
+          <text class="bsub"   x="566" y="330">per dealer — seed for scores</text>
+        </g>
+
+        <!-- ===== 4. USE boxes ===== -->
+        <g>
+          <rect class="box" x="815" y="86" width="220" height="50" rx="10"/><rect class="accent" x="815" y="96" width="4" height="30" rx="2"/>
+          <text class="btitle" x="831" y="105">Admin Hub</text>
+          <text class="mono"   x="831" y="120">/admin</text>
+          <text class="bsub"   x="831" y="132">classes · rosters · grading</text>
+
+          <rect class="box" x="815" y="144" width="220" height="50" rx="10"/><rect class="accent" x="815" y="154" width="4" height="30" rx="2"/>
+          <text class="btitle" x="831" y="163">Dealers Hub</text>
+          <text class="mono"   x="831" y="178">/dealers</text>
+          <text class="bsub"   x="831" y="190">search · progress cards</text>
+
+          <rect class="box" x="815" y="202" width="220" height="46" rx="10"/><rect class="accent" x="815" y="212" width="4" height="26" rx="2"/>
+          <text class="btitle" x="831" y="221">Manage Hub</text>
+          <text class="mono"   x="831" y="236">/manage — catalog &amp; seats</text>
+
+          <rect class="box" x="815" y="256" width="220" height="54" rx="10"/><rect class="accent" x="815" y="266" width="4" height="34" rx="2"/>
+          <text class="btitle" x="831" y="275">Excel export</text>
+          <text class="mono"   x="831" y="290">/api/export.xlsx</text>
+          <text class="bsub"   x="831" y="304">+ live mirror registrations.xlsx</text>
+        </g>
+
+        <!-- ===== 5. FEEDBACK / AI boxes ===== -->
+        <g>
+          <rect class="box" x="1080" y="100" width="220" height="86" rx="10"/><rect class="accent" x="1080" y="110" width="4" height="66" rx="2"/>
+          <text class="btitle" x="1096" y="120">Now — manual rules <tspan class="live">live</tspan></text>
+          <text class="bsub"   x="1096" y="140">• attended but not ordering</text>
+          <text class="bsub"   x="1096" y="156">• empty seats · dormant dealers</text>
+          <text class="bsub"   x="1096" y="172">• TM to-do &amp; exec exports</text>
+
+          <rect class="box" x="1080" y="200" width="220" height="104" rx="10"/><rect class="accent" x="1080" y="210" width="4" height="84" rx="2"/>
+          <text class="btitle" x="1096" y="220">Next — AI operations <tspan class="plan">planned</tspan></text>
+          <text class="bsub"   x="1096" y="240">• ranked "who to call" lists</text>
+          <text class="bsub"   x="1096" y="256">• which class to promote</text>
+          <text class="bsub"   x="1096" y="272">• dealer health · TM scorecards</text>
+          <text class="bsub"   x="1096" y="288">• chatbot on top of this data</text>
+        </g>
+
+        <!-- ===== FEEDBACK LOOP (back to DB) ===== -->
+        <path d="M1190 312 C1190 470 1190 490 940 490 L520 490 C400 490 395 490 395 428"
+              fill="none" stroke="#1d6fc2" stroke-width="2.5" stroke-dasharray="7 5" marker-end="url(#arrowUp)"/>
+        <text class="looplbl" x="740" y="483" text-anchor="middle">insights re-enter as next month's targeting</text>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span class="lg"><span class="d" style="background:#1d6fc2"></span> Past class</span>
+      <span class="lg"><span class="d" style="background:#c0392b"></span> Today</span>
+      <span class="lg"><span class="d" style="background:#1f8a4c"></span> Upcoming</span>
+      <span class="lg"><b style="color:#1f8a4c">live</b> = built today</span>
+      <span class="lg"><b style="color:#8a5a00">planned</b> = next build phase</span>
+      <span class="lg"><b style="color:#1d6fc2">→</b> data flow &nbsp;·&nbsp; <b style="color:#1d6fc2">⇢</b> feedback loop</span>
+    </div>
+  </div>
+</body>
+</html>

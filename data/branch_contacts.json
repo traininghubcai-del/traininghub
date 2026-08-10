@@ -1,0 +1,102 @@
+{
+  "Birmingham": {
+    "phone": "",
+    "regional_manager": "Todd Lynn",
+    "territory": "Alabama & Florida"
+  },
+  "Chattanooga": {
+    "phone": "",
+    "regional_manager": "Greg Snyder",
+    "territory": "East Tennessee"
+  },
+  "Columbia": {
+    "phone": "",
+    "regional_manager": "Randy Vaught",
+    "territory": "Central TN / Huntsville"
+  },
+  "Cookeville": {
+    "phone": "",
+    "regional_manager": "Greg Snyder",
+    "territory": "East Tennessee"
+  },
+  "Ft. Smith, AR": {
+    "phone": "",
+    "regional_manager": "Todd Compton",
+    "territory": "Arkansas"
+  },
+  "Hot Springs, AR": {
+    "phone": "",
+    "regional_manager": "Todd Compton",
+    "territory": "Arkansas"
+  },
+  "Huntsville": {
+    "phone": "",
+    "regional_manager": "Randy Vaught",
+    "territory": "Central TN / Huntsville"
+  },
+  "Jackson, TN": {
+    "phone": "",
+    "regional_manager": "Wade Willis",
+    "territory": "West Tennessee"
+  },
+  "Johnson City, TN": {
+    "phone": "",
+    "regional_manager": "Greg Snyder",
+    "territory": "East Tennessee"
+  },
+  "Jonesboro, AR": {
+    "phone": "",
+    "regional_manager": "Todd Compton",
+    "territory": "Arkansas"
+  },
+  "Knoxville": {
+    "phone": "",
+    "regional_manager": "Greg Snyder",
+    "territory": "East Tennessee"
+  },
+  "Little Rock": {
+    "phone": "",
+    "regional_manager": "Todd Compton",
+    "territory": "Arkansas"
+  },
+  "Memphis": {
+    "phone": "",
+    "regional_manager": "Wade Willis",
+    "territory": "West Tennessee"
+  },
+  "Mobile, AL": {
+    "phone": "",
+    "regional_manager": "Todd Lynn",
+    "territory": "Alabama & Florida"
+  },
+  "Murfreesboro": {
+    "phone": "",
+    "regional_manager": "Randy Vaught",
+    "territory": "Central TN / Huntsville"
+  },
+  "Nashville": {
+    "phone": "",
+    "regional_manager": "Randy Vaught",
+    "territory": "Central TN / Huntsville"
+  },
+  "Nesbit, MS": {
+    "phone": "",
+    "regional_manager": "Wade Willis",
+    "territory": "West Tennessee"
+  },
+  "Pensacola, FL": {
+    "phone": "",
+    "regional_manager": "Todd Lynn",
+    "territory": "Alabama & Florida"
+  },
+  "San Antonio, TX": {
+    "phone": "",
+    "regional_manager": "",
+    "territory": ""
+  },
+  "Springdale, AR": {
+    "phone": "",
+    "regional_manager": "Todd Compton",
+    "territory": "Arkansas"
+  }
+}

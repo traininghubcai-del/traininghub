@@ -1,0 +1,9 @@
+# Templates for formatting retrieved rows into the CONTEXT block the LLM reads,
+# and for the rule-based fallback lines. Kept in config so wording changes don't
+# require code edits.
+
+class_line: "{region} — {topic} ({level}), {event_date} {start_time}-{end_time}, {seats_remaining} of {capacity} seats open, at {location}"
+
+dealer_line: "{dealer_name} ({branch}, {tier}): {enrollments} enrolled / {attended} attended / {completed} completed, avg score {avg_score}, Level 1 {level1_status}"
+
+no_classes: "No classes matched. Ask about a branch (Nashville, Columbia, Knoxville…) or a topic (FIT, Mini Split, Airflow, Heat Pump, Ductless)."

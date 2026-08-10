@@ -1,0 +1,2 @@
+# chat_bot deps. Stdlib does the rest (csv, json, dataclasses).
+PyYAML>=6.0

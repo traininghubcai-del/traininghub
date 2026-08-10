@@ -1,0 +1,31 @@
+# Rules for the public ("RAG-style") answers over the class catalog. Keeping
+# these in config means we can change what the bot exposes without touching code.
+
+# Columns from classes_sim.csv that public answers are allowed to surface.
+public_class_fields:
+  - event_id
+  - topic
+  - level
+  - region
+  - branch
+  - event_date
+  - start_time
+  - end_time
+  - seats_remaining
+  - location
+
+# Topic keywords the simple parser looks for in a question -> canonical topic.
+topic_aliases:
+  fit: "FIT INSTALL & COMMISSIONING"
+  mini split: "MINI SPLIT INSTALL"
+  mini-split: "MINI SPLIT INSTALL"
+  ductless: "DUCTLESS SERVICE & TROUBLESHOOTING"
+  airflow: "AIRFLOW & BALANCING"
+  heat pump: "HEAT PUMP SERVICE"
+  heatpump: "HEAT PUMP SERVICE"
+
+# Thresholds used by both public and TM answers.
+thresholds:
+  low_seats: 5          # "almost full" cutoff for seats_remaining
+  passing_score: 70     # score >= this counts as a pass
+  level1_topic: "FIT INSTALL & COMMISSIONING"   # what "Level 1" maps to

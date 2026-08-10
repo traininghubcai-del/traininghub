@@ -1,0 +1,21 @@
+# Per-session and per-TM scratch — regenerated at runtime, never committed.
+data_temp/sessions/*.json
+data_temp/tm_cache/*.json
+
+# TM sandbox scratch folders (keep the folders, drop their contents)
+temp_*/*
+!temp_*/.gitkeep
+
+__pycache__/
+*.pyc
+
+# data_global/*_sim.csv ARE committed — they're the demo dataset.
+# Regenerate with: python -m builder_1.seed_sim_data
+
+# Since 2026-06-11 these are generated from REAL client data + live access codes
+# (tools/make_codes.py) — keep out of the repo.
+data_global/dealers_sim.csv
+data_global/registrations_sim.csv
+chat_rag/index_dealers.json
+chat_config/tm_keys.yaml
+chat_config/trainer_codes.yaml

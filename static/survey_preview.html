@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="only light" />
+<title>M&amp;A Supply — What students will receive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@500;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0a2540; --navy-2:#0e3a66; --blue:#1d6fc2; --blue-soft:#e9f1fa;
+    --mint:#1fb178; --ink:#16222f; --muted:#56697a; --bg:#f3f6fa; --line:#d9e2ec;
+    --display:"Saira",system-ui,sans-serif; --body:"Barlow",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--body);color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{width:min(900px,94vw);margin:0 auto}
+  h1,h2,h3{font-family:var(--display);color:var(--navy)}
+  .top{background:linear-gradient(135deg,var(--navy),var(--navy-2));color:#fff;padding:18px 0}
+  .top .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .top h1{color:#fff;font-size:1.1rem;font-weight:800}
+  .logo-chip{display:inline-flex;align-items:center;margin-left:0 !important}
+  .logo-chip img{height:30px;display:block;}
+  .top .tag{font-family:var(--display);font-weight:800;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:999px;background:#e8a33d;color:#3a2a00}
+  .top a{margin-left:auto;color:#cfe2f5;font-size:.86rem;text-decoration:none}
+  main{padding:34px 0 70px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 32px rgba(10,37,64,.07);padding:28px;margin-bottom:24px}
+  .meta{color:var(--muted);font-size:.95rem;margin-top:4px}
+
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:12px}
+  th{font-family:var(--display);font-weight:700;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:2px solid var(--line)}
+  td{padding:9px 12px;border-bottom:1px solid var(--line)}
+  .res{display:inline-block;font-family:var(--display);font-weight:700;font-size:.72rem;border-radius:999px;padding:2px 10px}
+  .res.pass{background:#e6f6ef;color:#0f8e5d}
+  .res.fail{background:#fdecec;color:#c0392b}
+  .res.pending{background:#fff4d6;color:#9a7b1d}
+
+  /* framed email */
+  .mail-frame{border:2px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 18px 44px rgba(10,37,64,.12)}
+  .mail-head{background:#f6f8fb;border-bottom:1px solid var(--line);padding:14px 20px;font-size:.85rem;color:var(--muted)}
+  .mail-head b{color:var(--ink)}
+  .mail-head .subj{font-size:1rem;color:var(--navy);font-weight:700;margin-top:4px}
+  .mail-body{padding:28px 30px;background:#fff;font-size:.97rem}
+  .mail-body p{margin:0 0 14px}
+  .mail-brand{background:#fff;border-bottom:3px solid var(--blue);padding:14px 30px;display:flex;align-items:center;gap:14px}
+  .mail-brand img{height:36px}
+  .mail-brand span{font-family:var(--display);font-weight:700;font-size:.78rem;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+  .mail-brand em{font-style:normal;color:#9ad7bd}
+  .checkup-btn{display:inline-block;background:var(--blue);color:#fff;font-family:var(--display);font-weight:800;padding:13px 30px;border-radius:8px;text-decoration:none;margin:6px 0 8px}
+  .raw-link{font-size:.8rem;color:var(--muted);word-break:break-all}
+  .mail-sig{border-top:1px solid var(--line);margin-top:18px;padding-top:14px;color:var(--muted);font-size:.9rem}
+  .mail-sig b{color:var(--navy)}
+  .pick{padding:9px 12px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--body);font-size:.95rem;background:#fff;margin-left:auto}
+  .preview-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+
+  /* final action */
+  .final{background:linear-gradient(135deg,#0f8e5d,var(--mint));color:#fff;border-radius:16px;padding:28px;text-align:center}
+  .final h3{color:#fff;font-size:1.25rem}
+  .final p{color:#e2f6ec;font-size:.95rem;max-width:60ch;margin:10px auto 0}
+  .final button{margin-top:18px;padding:14px 32px;border:none;border-radius:8px;background:#fff;color:#0f8e5d;font-family:var(--display);font-weight:900;font-size:1rem;cursor:pointer}
+  .final button:disabled{opacity:.6;cursor:not-allowed}
+  .final .done{margin-top:14px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <a class="logo-chip" href="/" title="Back to the Training Hub"><img src="/static/logos/ma-emblem.png?v=3" alt="M&amp;A Supply" /></a>
+    <h1>TRAINING ADMIN HUB</h1>
+    <span class="tag">DEMO · What students will receive</span>
+    <a href="/">← Back to classes</a>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2 id="class-title">Loading…</h2>
+    <p class="meta" id="class-meta"></p>
+    <h3 style="margin-top:18px;font-size:1rem">Recipients — every attended student</h3>
+    <table>
+      <thead><tr><th>Student</th><th>Dealer</th><th>Result</th><th>Email it goes to</th></tr></thead>
+      <tbody id="recipients"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="preview-head">
+      <h3 style="font-size:1.05rem">📧 The exact email, per student</h3>
+      <select class="pick" id="student-pick"></select>
+    </div>
+    <div class="mail-frame">
+      <div class="mail-brand"><img src="/static/logos/ma-logo-horizontal.png?v=4" alt="M&amp;A Supply Company Inc." /><span>Training &amp; Technical Services</span></div>
+      <div class="mail-head">
+        <div>From: <b>traininghubcai@gmail.com</b> &nbsp;·&nbsp; To: <b id="m-to"></b></div>
+        <div class="subj" id="m-subject"></div>
+      </div>
+      <div class="mail-body" id="m-body"></div>
+    </div>
+  </div>
+
+  <div class="final">
+    <h3>📨 Send &amp; move class 🟡 → ✅</h3>
+    <p><b>What this means:</b> sending the checkup closes out the class — every student is
+       graded and notified, so this class flips from <b>🟡 needs grading</b> to
+       <b>✅ complete</b> on the class list, the progress cards, and every TM scorecard.
+       It's the trainer's final responsibility after class day. (Demo: send is simulated,
+       the status flip is real.)</p>
+    <button id="finalize-btn">Send checkups &amp; close out the class</button>
+    <div class="done" id="final-done"></div>
+  </div>
+
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const CODE = params.get("code") || "";
+const EVENT = params.get("event_id") || "";
+let students = [], cls = null, trainer = "";
+
+function fmtDate(iso) {
+  const d = new Date(iso + "T12:00:00");
+  return isNaN(d) ? iso : d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
+function emailFor(s) {
+  const first = s.name.split(" ")[0];
+  const quiz = `${location.origin}/quiz?student_id=${s.attendee_id}&event_id=${EVENT}`;
+  return {
+    to: s.contact_email,
+    subject: `Your M&A training — class survey + your retention quiz link (${cls.topic})`,
+    body: `
+      <p>Hi <b>${first}</b>,</p>
+      <p>Thanks again for joining us for <b>${cls.topic}</b> at our <b>${cls.branch}</b> branch on <b>${fmtDate(cls.event_date)}</b> — we hope it was time well spent. Two quick things, and here's exactly how they work:</p>
+
+      <p style="background:#e9f1fa;border-radius:8px;padding:12px 16px">
+        <b>STEP 1 — Class survey (~3 minutes, do it today)</b><br/>
+        Tell us about your experience — the class, your trainer, the facility. Your feedback
+        shapes what we cover next for you and your team.<br/>
+        <a class="checkup-btn" href="${quiz}">① Take the class survey →</a></p>
+
+      <p style="background:#f0ecfd;border-radius:8px;padding:12px 16px">
+        <b>STEP 2 — Retention quizzes (a series of 4)</b><br/>
+        To measure retention and progress, we follow up with short quizzes
+        <b>1, 7, 30 and 90 days</b> after class.<br/><br/>
+        <b>⚠️ SAVE THIS LINK.</b> It's the <b>same link every time</b>, but the questions
+        <b>change at each period</b>. It's your responsibility to come back to this same
+        link (or this email) at each checkpoint to continue your retention log.<br/>
+        <a class="checkup-btn" style="background:#7a5cf0" href="${quiz}">② My retention quiz link →</a><br/>
+        <span class="raw-link">(If the button doesn't work, use this link: ${quiz})</span></p>
+
+      <p><b>Why finish the series?</b> Participants who complete their retention log are
+        <b>considered for master classes</b>. Earning badges gives you credibility and new
+        opportunities — <b>network event invitations, gift cards, and more</b>.</p>
+
+      <div class="mail-sig">Thanks for training with M&amp;A Supply,<br/>
+        <b>${trainer}</b><br/>Training &amp; Technical Services · M&amp;A Supply</div>`,
+  };
+}
+
+function renderMail(s) {
+  const m = emailFor(s);
+  $("m-to").textContent = m.to;
+  $("m-subject").textContent = m.subject;
+  $("m-body").innerHTML = m.body;
+}
+
+async function load() {
+  const [cRes, rRes] = await Promise.all([
+    fetch(`/api/admin-hub/classes?code=${encodeURIComponent(CODE)}`),
+    fetch(`/api/admin-hub/roster?code=${encodeURIComponent(CODE)}&event_id=${encodeURIComponent(EVENT)}`),
+  ]);
+  const cData = await cRes.json(), rData = await rRes.json();
+  cls = (cData.classes || []).find(c => c.event_id === EVENT);
+  trainer = (cData.session || {}).display_name || "Your trainer";
+  if (!cls) { $("class-title").textContent = "Class not found (is your code valid?)"; return; }
+  students = (rData.students || []).filter(s => s.attended !== 0);  // skip marked no-shows
+
+  $("class-title").textContent = `${cls.topic} — ${cls.region}`;
+  $("class-meta").textContent =
+    `${fmtDate(cls.event_date)} · ${cls.start_time}–${cls.end_time} · ${students.length} recipients · status: ${cls.status_grading === "graded" ? "✅ graded" : "🟡 needs grading"}`;
+
+  $("recipients").innerHTML = students.map(s => `
+    <tr>
+      <td><b>${s.name}</b></td>
+      <td>${s.company_name || "—"}</td>
+      <td>${s.passed === 1 ? '<span class="res pass">Pass</span>' : s.passed === 0 ? '<span class="res fail">Retake</span>' : '<span class="res pending">Pending grade</span>'}</td>
+      <td>${s.contact_email}</td>
+    </tr>`).join("");
+
+  $("student-pick").innerHTML = students.map((s, i) => `<option value="${i}">${s.name} — ${s.company_name || ""}</option>`).join("");
+  $("student-pick").addEventListener("change", () => renderMail(students[+$("student-pick").value]));
+  if (students.length) renderMail(students[0]);
+
+  if (cls.status_grading === "graded") {
+    $("finalize-btn").textContent = "✅ Class already closed out — resend checkups";
+  }
+}
+
+$("finalize-btn").addEventListener("click", async () => {
+  const btn = $("finalize-btn");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/admin-hub/finalize-class", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: CODE, event_id: EVENT }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || "Could not close out the class.");
+    $("final-done").innerHTML =
+      `✓ ${data.message}<br/><a href="/" style="color:#fff;text-decoration:underline">Open the class list</a>`;
+    btn.textContent = "✓ Sent & closed out";
+  } catch (e) {
+    $("final-done").textContent = e.message;
+    btn.disabled = false;
+  }
+});
+
+load();
+</script>
+</body>
+</html>

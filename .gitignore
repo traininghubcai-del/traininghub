@@ -1,0 +1,37 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# runtime data — regenerated / local
+data/registrations.db
+data/registrations.xlsx
+data/email_campaign/
+data/fliers/
+data/class_address.json
+data/hub_codes.json
+
+# REAL client data (PII) — never commit
+data/dealers.xlsx
+data/employees.xlsx
+data/access_codes.xlsx
+data/access_hub.json
+_data_in/
+
+# pre-AUG_3 dev backup — holds real dealer/employee/registration data. Never ship.
+_pre_aug3_backup/
+
+# generated QR artifacts — rebuild with tools/make_qr.py or the /qr-pack page
+qr/
+
+# secrets / credentials — supplied per environment, never committed
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+chat_bot/chat_config/tm_keys.yaml
+chat_bot/chat_config/trainer_codes.yaml
+
+# stale setup note pointing at the old personal repo
+git_remote_setup.md
