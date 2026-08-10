@@ -54,7 +54,12 @@ def _free_port(port):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8000))
+    # Railway assigns the port via $PORT and routes to the container's external
+    # interface. Binding 127.0.0.1 accepts loopback only, so the platform health
+    # check never connects and the edge answers 502 — bind 0.0.0.0 instead.
+    # Both are overridable; 8080 is the local-dev fallback, never a prod value.
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8080))
+    host = os.environ.get("HOST", "0.0.0.0")
     repo = get_repository()
     repo.init()
     try:
@@ -64,9 +69,9 @@ def main():
 
     _free_port(port)
     ThreadingHTTPServer.allow_reuse_address = True
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = ThreadingHTTPServer((host, port), Handler)
     srv.repo = repo
-    print(f"M&A Supply landing page running at http://localhost:{port}  (Ctrl+C to stop)")
+    print(f"M&A Supply landing page listening on {host}:{port}  (Ctrl+C to stop)")
     print(f"  example class URL:  http://localhost:{port}/?event=nashville-fit-2026-04-29")
     try:
         srv.serve_forever()
