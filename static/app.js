@@ -1012,6 +1012,11 @@ function renderAdmin(d) {
       <h2>Admin — ${escHtml(d.event.topic)}</h2>
       <p>Edit the class, watch the seats, see everyone who's registered.</p>
     </div>
+    ${d.cancelled ? `<div class="ma-cancelled-banner">
+      <span aria-hidden="true">⛔</span>
+      <span><b>This class is cancelled.</b> Dealers can't see it or register.
+        Everyone already registered is still listed below — reinstating puts
+        the class back exactly as it was.</span></div>` : ""}
     <div class="ma-seatbar">
       <b>${s.taken}<span>/${s.capacity || "∞"}</span></b>
       <div class="ma-seatbar-track"><i style="width:${s.capacity ? Math.min(100, s.taken / s.capacity * 100) : 0}%"></i></div>
@@ -1034,6 +1039,8 @@ function renderAdmin(d) {
     </div>
     <div class="ma-panel-actions">
       <button type="button" class="btn btn-primary" id="admin-save">Save changes</button>
+      <button type="button" class="btn ${d.cancelled ? "btn-primary" : "btn-danger"}"
+              id="admin-active">${d.cancelled ? "Reinstate class" : "Cancel class"}</button>
       <span class="ma-panel-msg" id="admin-msg"></span>
     </div>
     <div class="ma-confirm" id="admin-confirm" hidden></div>
@@ -1055,6 +1062,7 @@ function renderAdmin(d) {
     adminOriginal[el.dataset.af] = String(el.value ?? "").trim();
   });
   document.getElementById("admin-save").onclick = saveAdmin;
+  document.getElementById("admin-active").onclick = () => confirmSetActive(!!d.cancelled, d.roster.length);
   document.getElementById("admin-remind").onclick = generateReminders;
   // typing again after a diff was shown invalidates it — recompute on next save
   box.querySelectorAll("[data-af]").forEach((el) => {
@@ -1164,6 +1172,81 @@ async function applyAdmin(changes) {
     err.textContent = e.message; err.hidden = false;
   } finally {
     go.disabled = false; go.textContent = "Confirm & save";
+  }
+}
+
+// ---------- cancel / reinstate a class ----------
+// Same two-pass shape as a field edit: say exactly what will happen, then make
+// them re-enter the code. Cancelling is reversible, but it takes a live class
+// away from dealers, so it never fires on a single click.
+function confirmSetActive(isCancelled, registered) {
+  const box = document.getElementById("admin-confirm");
+  const active = isCancelled;                 // reinstating if it's cancelled now
+  const who = registered === 1 ? "1 dealer is" : `${registered} dealers are`;
+  box.innerHTML = `
+    <p class="ma-confirm-lead">${active
+      ? "You're about to <b>reinstate this class</b>."
+      : "You're about to <b>cancel this class</b>."}</p>
+    <div class="ma-diff">
+      <div class="ma-diff-row"><span class="k">Dealers</span><span class="v">${active
+        ? "see it again and can register"
+        : "stop seeing it — no new registrations"}</span></div>
+      <div class="ma-diff-row"><span class="k">Reminder emails</span><span class="v">${active
+        ? "resume" : "stop going out"}</span></div>
+      <div class="ma-diff-row"><span class="k">Who's registered</span><span class="v">${
+        registered ? `${who} registered — kept, not deleted` : "nobody registered yet"}</span></div>
+    </div>
+    ${!active && registered
+      ? `<p class="ma-confirm-lead">Cancelling does <b>not</b> email anyone. Tell
+           the ${registered === 1 ? "dealer" : "dealers"} below yourself.</p>` : ""}
+    <label class="ma-confirm-label" for="active-pw">Enter the Admin access code to
+      ${active ? "reinstate" : "cancel"} this class</label>
+    <div class="ma-confirm-row">
+      <input type="password" id="active-pw" autocomplete="off" placeholder="Access code" />
+      <button type="button" class="btn ${active ? "btn-primary" : "btn-danger"}"
+              id="active-go">${active ? "Confirm & reinstate" : "Confirm & cancel"}</button>
+      <button type="button" class="ma-mode-cancel" id="active-back">Never mind</button>
+    </div>
+    <p class="ma-panel-msg error" id="active-err" hidden></p>`;
+  box.hidden = false;
+
+  const pw = document.getElementById("active-pw");
+  pw.focus();
+  pw.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); applySetActive(active); } };
+  document.getElementById("active-go").onclick = () => applySetActive(active);
+  document.getElementById("active-back").onclick = () => { box.hidden = true; };
+}
+
+async function applySetActive(active) {
+  const err = document.getElementById("active-err");
+  const code = document.getElementById("active-pw").value.trim();
+  if (!code) { err.textContent = "Enter the access code."; err.hidden = false; return; }
+
+  const go = document.getElementById("active-go");
+  const label = go.textContent;
+  go.disabled = true; go.textContent = "Working…"; err.hidden = true;
+  try {
+    const res = await fetch("/api/hub/set-active", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: flierEvent, mode: "admin", code, active }),
+    });
+    const data = await res.json();
+    if (!data.ok && data.need_code) {
+      err.textContent = "That code isn't right. Nothing was changed.";
+      err.hidden = false;
+      return;
+    }
+    if (!data.ok) throw new Error(data.error || "Couldn't update the class.");
+    rememberCode("admin", code);
+    document.getElementById("admin-confirm").hidden = true;
+    await loadMode("admin");                  // redraw — banner and button flip
+    const msg = document.getElementById("admin-msg");
+    msg.textContent = "✓ " + data.message;
+    msg.className = "ma-panel-msg success";
+  } catch (e) {
+    err.textContent = e.message; err.hidden = false;
+  } finally {
+    go.disabled = false; go.textContent = label;
   }
 }
 

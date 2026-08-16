@@ -324,6 +324,16 @@ button.ma-nav-cta.is-on:hover { background: #177a41; }
 .ma-panel-msg.error { color: var(--err); }
 .ma-empty { color: var(--muted); padding: 18px; border: 1px dashed var(--line); background: #fbfcfe; text-align: center; }
 
+/* cancelling a class — destructive, so it reads red and sits apart from Save */
+.btn-danger { background: var(--white); color: var(--err); border-color: var(--err); }
+.btn-danger:hover { background: var(--err); color: #fff; border-color: var(--err);
+  transform: translateY(-2px); box-shadow: var(--shadow); }
+.btn-danger:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; }
+.ma-cancelled-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  border-left: 4px solid var(--err); background: #fdecea; padding: 12px 16px;
+  color: var(--navy); font-size: 0.92rem; }
+.ma-cancelled-banner b { color: var(--err); }
+
 /* two-pass save: show the exact diff, then re-enter the code to apply it */
 .ma-confirm { margin-top: 16px; border: 2px solid #d9822b; background: #fdf7ef; padding: 16px 18px; }
 .ma-confirm-lead { font-size: 0.95rem; color: var(--navy); margin-bottom: 12px; }

@@ -103,7 +103,14 @@ def class_payload(repo, event_id, mode, code):
 
     events, branches, _ = load_catalog()
     ev = events.get(str(event_id).strip())
-    if not ev or not is_active(ev):
+    if not ev:
+        return {"ok": False, "error": "This class link is not active."}
+
+    # A cancelled class stays open to Admin — they need the roster to tell the
+    # dealers, and the Reinstate button lives in this payload. Cancelling would
+    # otherwise be a one-way door with the attendee list locked inside it.
+    cancelled = not is_active(ev)
+    if cancelled and mode != "admin":
         return {"ok": False, "error": "This class link is not active."}
 
     from src.contacts import support_for
@@ -111,7 +118,7 @@ def class_payload(repo, event_id, mode, code):
     view = event_view(ev)
     view["support"] = support_for(ev)
     out = {"ok": True, "mode": mode, "event": view, "branches": branches,
-           "flier": get_flier(view["event_id"])}
+           "cancelled": cancelled, "flier": get_flier(view["event_id"])}
 
     if mode == "user":
         return out                              # public only — no roster, no emails
@@ -514,6 +521,27 @@ def save_class(repo, event_id, mode, code, fields):
             {"changed": result.get("changed", []),
              "from": {k: before.get(k) for k in result.get("changed", [])},
              "to": {k: (fields or {}).get(k) for k in result.get("changed", [])}})
+    return result
+
+
+def set_class_active(repo, event_id, mode, code, active):
+    """Cancel (active=False) or reinstate (active=True) one class.
+
+    Cancelling is deliberately non-destructive: registrations, grades and seat
+    counts are all left alone, so a class taken down by mistake comes back
+    exactly as it was. It only hides the class from dealers, refuses new
+    signups, and stops the reminder emails.
+    """
+    if mode != "admin" or not verify(mode, code):
+        return {"ok": False, "error": "Locked.", "need_code": True, "mode": "admin"}
+    from src.audit import log
+    from src.manage import set_active
+    event_id = str(event_id).strip()
+    active = bool(active)
+    result = set_active(repo, event_id, active)
+    if result.get("ok"):
+        log(mode, "class.reinstate" if active else "class.cancel", event_id,
+            {"active": active})
     return result
 
 
