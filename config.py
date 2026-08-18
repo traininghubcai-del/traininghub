@@ -55,8 +55,10 @@ EMAIL_OUT_DIR = EMAIL_CAMPAIGN_DIR / "emails"
 CAMPAIGN_SCHEDULE_XLSX = EMAIL_CAMPAIGN_DIR / "campaign_schedule.xlsx"
 CAMPAIGN_OUTBOX_XLSX = EMAIL_CAMPAIGN_DIR / "outbox.xlsx"
 REMINDER_DAYS = [7, 3, 1]            # days before class -> one reminder email each
-EMAIL_FROM = "traininghubcai@gmail.com"
-EMAIL_FROM_NAME = "M&A Supply Training"   # what a dealer sees as the sender
+# Both env-driven so moving to the client's own domain later is a config change,
+# not a code change — nothing here is tied to a particular mail provider.
+EMAIL_FROM = os.environ.get("EMAIL_FROM", "traininghubcai@gmail.com")
+EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "M&A Supply Training")
 
 # Gmail SMTP. The password is a 16-character Google App Password, NOT the
 # account password — it needs 2-Step Verification switched on for the account.
