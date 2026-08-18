@@ -55,7 +55,26 @@ EMAIL_OUT_DIR = EMAIL_CAMPAIGN_DIR / "emails"
 CAMPAIGN_SCHEDULE_XLSX = EMAIL_CAMPAIGN_DIR / "campaign_schedule.xlsx"
 CAMPAIGN_OUTBOX_XLSX = EMAIL_CAMPAIGN_DIR / "outbox.xlsx"
 REMINDER_DAYS = [7, 3, 1]            # days before class -> one reminder email each
-EMAIL_FROM = "traininghubcai@gmail.com"  # sends are still simulated until SMTP is wired
+EMAIL_FROM = "traininghubcai@gmail.com"
+EMAIL_FROM_NAME = "M&A Supply Training"   # what a dealer sees as the sender
+
+# Gmail SMTP. The password is a 16-character Google App Password, NOT the
+# account password — it needs 2-Step Verification switched on for the account.
+# Everything here comes from the environment: no credential is ever committed.
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", EMAIL_FROM)
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO", EMAIL_FROM)
+
+# The master switch. Deploying this code does NOT start sending — mail only
+# leaves the machine when EMAIL_SEND_ENABLED is explicitly turned on, so a
+# push can never surprise a dealer with a duplicate reminder.
+EMAIL_SEND_ENABLED = os.environ.get("EMAIL_SEND_ENABLED", "").strip().lower() \
+    in ("1", "true", "yes", "on")
+# Gmail throttles bursts harder than it throttles volume. One second between
+# messages keeps a full day's batch comfortably under its rate limits.
+EMAIL_SEND_PAUSE = float(os.environ.get("EMAIL_SEND_PAUSE", "1.0"))
 
 # --- form / display tunables -------------------------------------------------
 ROLES = ["Technician", "Inside Sales", "Outside Sales", "Owner"]  # mirror static/app.js

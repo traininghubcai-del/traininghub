@@ -15,13 +15,19 @@ Pipeline (all local — no mail provider yet):
 Reads the same sources as the app: the SQLite repo (registrations) and
 events.xlsx via src.catalog. Writes only inside data/email_campaign/.
 """
+import smtplib
+import time
 from datetime import date, datetime, timedelta
+from email.message import EmailMessage
+from email.utils import formataddr
 from urllib.parse import quote
 
 from openpyxl import Workbook, load_workbook
 
-from config import (CAMPAIGN_OUTBOX_XLSX, CAMPAIGN_SCHEDULE_XLSX, EMAIL_OUT_DIR,
-                    REMINDER_DAYS)
+from config import (CAMPAIGN_OUTBOX_XLSX, CAMPAIGN_SCHEDULE_XLSX, EMAIL_FROM,
+                    EMAIL_FROM_NAME, EMAIL_OUT_DIR, EMAIL_REPLY_TO,
+                    EMAIL_SEND_ENABLED, EMAIL_SEND_PAUSE, REMINDER_DAYS,
+                    SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER)
 from src.catalog import event_view, is_active, load_catalog
 from src.db import get_repository
 
@@ -318,23 +324,85 @@ def generate_emails(today=None):
 
 # --- step 2: send (simulated until a provider is wired) ------------------------------
 
+def _plain_text(job):
+    """Text fallback for clients that won't render HTML. Every mail is sent
+    multipart/alternative — a text-only reader still gets the what/when/where."""
+    v = job["view"]
+    return (f"{job['subject']}\n\n"
+            f"{v['topic']}\n"
+            f"{v.get('weekday', '')} {v.get('event_date', '')}  {v.get('time_display', '')}\n"
+            f"{v.get('address_display') or v.get('event_location', '')}\n\n"
+            f"Registered under: {job['reg']['company_name']}\n\n"
+            "Can't make it? Let your M&A branch know at least 24 hours ahead so "
+            "the seat can go to another dealer.\n")
+
+
 def _deliver(job):
-    """Real delivery goes here when we deploy (SMTP / SES / provider API):
-    send job['subject'] + the rendered HTML to job['reg']['contact_email'],
-    attaching the .ics. Until then the outbox row IS the send."""
-    return "SIMULATED — written to outbox, no email left this machine"
+    """Send one reminder through Gmail SMTP, with the .ics attached.
+
+    Returns the string that lands in the outbox `status` column. That string is
+    load-bearing: sent_keys() treats a row as "already sent" unless the status
+    says it failed, so a bounce or an auth error retries on the next run instead
+    of being silently swallowed.
+
+    Nothing leaves the machine unless EMAIL_SEND_ENABLED is on AND a password is
+    configured — either missing and this stays a simulation.
+    """
+    if not EMAIL_SEND_ENABLED:
+        return "SIMULATED — written to outbox, no email left this machine"
+    if not SMTP_PASSWORD:
+        return "FAILED — SMTP_PASSWORD is not set; nothing was sent"
+
+    to = str(job["reg"].get("contact_email", "")).strip()
+    if not to:
+        return "FAILED — registration has no contact email"
+
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = job["subject"]
+        msg["From"] = formataddr((EMAIL_FROM_NAME, EMAIL_FROM))
+        msg["To"] = to
+        msg["Reply-To"] = EMAIL_REPLY_TO
+        msg.set_content(_plain_text(job))
+        msg.add_alternative(render_email(job), subtype="html")
+        msg.add_attachment(
+            ics_text(job["event"], job["view"], job["reg_id"]).encode("utf-8"),
+            maintype="text", subtype="calendar", filename=job["ics_name"])
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASSWORD)
+            s.send_message(msg)
+        if EMAIL_SEND_PAUSE > 0:
+            time.sleep(EMAIL_SEND_PAUSE)     # stay under Gmail's burst limits
+        return f"SENT to {to}"
+    except smtplib.SMTPAuthenticationError:
+        # Almost always a plain account password instead of an App Password,
+        # or 2-Step Verification not enabled on the account.
+        return "FAILED — SMTP login rejected (use a Google App Password)"
+    except Exception as e:  # noqa: BLE001 - one bad address must not stop the batch
+        return f"FAILED — {type(e).__name__}: {e}"
 
 
 def sent_keys():
-    """(reg_id, stage) pairs already in outbox.xlsx — the dedupe ledger."""
+    """(reg_id, stage) pairs already sent, from outbox.xlsx — the dedupe ledger.
+
+    A row whose status starts with FAILED does NOT count: that email never
+    reached anyone, so the next run should try it again. Anything else (a real
+    SENT, or a SIMULATED row from demo mode) counts as done and is never
+    re-sent — that is what stops a dealer getting the same reminder twice.
+    """
     if not CAMPAIGN_OUTBOX_XLSX.exists():
         return set()
     ws = load_workbook(CAMPAIGN_OUTBOX_XLSX, read_only=True).active
     keys = set()
     for row in ws.iter_rows(min_row=2, values_only=True):
         rec = dict(zip(OUTBOX_COLUMNS, row))
-        if rec.get("reg_id") is not None:
-            keys.add((int(rec["reg_id"]), int(rec["stage_days"])))
+        if rec.get("reg_id") is None:
+            continue
+        if str(rec.get("status") or "").strip().upper().startswith("FAILED"):
+            continue
+        keys.add((int(rec["reg_id"]), int(rec["stage_days"])))
     return keys
 
 
