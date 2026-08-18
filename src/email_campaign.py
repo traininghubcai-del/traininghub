@@ -406,6 +406,31 @@ def sent_keys():
     return keys
 
 
+def reminded_today(event_id, today=None):
+    """reg_ids that already got a reminder for this class today.
+
+    The (reg, stage) ledger alone can't stop a double-click on the Admin
+    "send now" button: the second press skips the stage it just sent and falls
+    through to the next one, which is a different key but the same dealer
+    getting mail twice in a row. Same-day is the guard that matches what a
+    person would call a duplicate.
+    """
+    today = today or date.today()
+    if not CAMPAIGN_OUTBOX_XLSX.exists():
+        return set()
+    ws = load_workbook(CAMPAIGN_OUTBOX_XLSX, read_only=True).active
+    out = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        rec = dict(zip(OUTBOX_COLUMNS, row))
+        if str(rec.get("event_id") or "") != str(event_id):
+            continue
+        if str(rec.get("status") or "").strip().upper().startswith("FAILED"):
+            continue
+        if str(rec.get("sent_at") or "")[:10] == str(today):
+            out.add(int(rec["reg_id"]))
+    return out
+
+
 def due_jobs(today=None):
     """Emails whose send day arrived (or passed) and were never sent,
     for classes still in the future."""
@@ -422,7 +447,18 @@ def run_sender(today=None):
     is exactly the function a daily cron/scheduler will call after deploy.
     """
     today = today or date.today()
-    jobs = due_jobs(today)
+    return send_jobs(due_jobs(today), today)
+
+
+def send_jobs(jobs, today=None):
+    """Deliver these jobs and append one outbox row each.
+
+    The daily scheduler and the Admin lens "send now" button both come through
+    here, so they share one ledger: a reminder sent by hand this afternoon is
+    already recorded when tonight's run computes what's due, and the dealer
+    never gets it twice.
+    """
+    today = today or date.today()
     if not jobs:
         return []
 

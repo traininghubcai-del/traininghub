@@ -1048,9 +1048,12 @@ function renderAdmin(d) {
     ${rosterTable(d.roster, false)}
 
     <div class="ma-remind-box">
-      <p class="ma-remind-title">Reminder letters</p>
-      <p class="ma-remind-note">One letter per student. Counts as a reminder sent.</p>
+      <p class="ma-remind-title">Reminders</p>
+      <p class="ma-remind-note">Email the "class is coming up" reminder now, or print
+        one letter per student. Both count as a reminder sent.</p>
       <div class="ma-panel-actions">
+        <button type="button" class="btn-remind" id="admin-email-remind">
+          <span aria-hidden="true">📨</span> Email reminder now</button>
         <button type="button" class="btn-remind" id="admin-remind">
           <span aria-hidden="true">✉️</span> Send reminders (PDF)</button>
         <span class="ma-panel-msg" id="remind-msg"></span>
@@ -1064,6 +1067,7 @@ function renderAdmin(d) {
   document.getElementById("admin-save").onclick = saveAdmin;
   document.getElementById("admin-active").onclick = () => confirmSetActive(!!d.cancelled, d.roster.length);
   document.getElementById("admin-remind").onclick = generateReminders;
+  document.getElementById("admin-email-remind").onclick = emailReminders;
   // typing again after a diff was shown invalidates it — recompute on next save
   box.querySelectorAll("[data-af]").forEach((el) => {
     el.addEventListener("input", () => {
@@ -1247,6 +1251,44 @@ async function applySetActive(active) {
     err.textContent = e.message; err.hidden = false;
   } finally {
     go.disabled = false; go.textContent = label;
+  }
+}
+
+// ---------- email the reminder now ----------
+// Sends the same "class is coming up" mail the 7/3/1-day schedule would send,
+// but on demand. The server picks the stage nearest today and refuses anyone
+// who already heard from us today, so a second click is a no-op, not a second
+// email. One confirm is enough — this is reversible in the sense that nothing
+// is destroyed, but it does reach real dealers, so it never fires silently.
+async function emailReminders() {
+  const roster = (modeData.admin && modeData.admin.roster) || [];
+  const companies = new Set(roster.map((r) => r.company_name).filter(Boolean));
+  const n = companies.size || roster.length;
+  if (!n) { alert("Nobody is registered for this class yet."); return; }
+
+  if (!confirm(`Email the "class is coming up" reminder to ${n} registered ` +
+               `${n === 1 ? "dealer" : "dealers"} now?\n\n` +
+               "Anyone who already got a reminder today is skipped.")) return;
+
+  const btn = document.getElementById("admin-email-remind");
+  const msg = document.getElementById("remind-msg");
+  const label = btn.innerHTML;
+  btn.disabled = true; btn.textContent = "Sending…"; msg.textContent = "";
+  try {
+    const res = await fetch("/api/hub/email-reminders", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: flierEvent, mode: "admin", code: codeFor("admin") }),
+    });
+    const data = await res.json();
+    if (!data.ok && data.need_code) throw new Error("Your session expired — reopen the Admin view.");
+    if (!data.ok) throw new Error(data.error || "Couldn't send the reminders.");
+    msg.textContent = (data.sent ? "✓ " : "") + data.message;
+    msg.className = "ma-panel-msg " + (data.failed && !data.sent ? "error" : "success");
+    if (ADMIN_ROWS && Object.keys(ADMIN_ROWS).length) loadAdminRows();
+  } catch (e) {
+    msg.textContent = e.message; msg.className = "ma-panel-msg error";
+  } finally {
+    btn.disabled = false; btn.innerHTML = label;
   }
 }
 

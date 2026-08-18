@@ -524,6 +524,64 @@ def save_class(repo, event_id, mode, code, fields):
     return result
 
 
+def send_class_reminders(repo, event_id, mode, code):
+    """Email everyone registered for this class the "it's coming up" reminder,
+    now, instead of waiting for the 7/3/1-day schedule to reach them.
+
+    One email per registration, never one per stage: whichever stage sits
+    closest to today is the one that goes, so the wording matches how far off
+    the class actually is. Anything already in the ledger is skipped, and what
+    does go out is written back to that same ledger — so pressing this button
+    cannot produce a second copy, and neither can tonight's scheduled run.
+    """
+    if mode != "admin" or not verify(mode, code):
+        return {"ok": False, "error": "Locked.", "need_code": True, "mode": "admin"}
+
+    from datetime import date
+
+    from src.audit import log
+    from src.email_campaign import reminded_today, send_jobs, sent_keys, upcoming_jobs
+
+    event_id = str(event_id).strip()
+    today = date.today()
+    jobs = [j for j in upcoming_jobs(today) if j["view"]["event_id"] == event_id]
+    if not jobs:
+        return {"ok": False, "error": "Nobody is registered yet, or the class has already passed."}
+
+    done = sent_keys()
+    already = reminded_today(event_id, today)   # stops an accidental double-click
+    nearest = {}
+    for j in jobs:
+        if j["reg_id"] in already or (j["reg_id"], j["stage"]) in done:
+            continue                       # that dealer already heard from us
+        best = nearest.get(j["reg_id"])
+        if best is None or abs((j["send_on"] - today).days) < abs((best["send_on"] - today).days):
+            nearest[j["reg_id"]] = j
+    picked = list(nearest.values())
+    if not picked:
+        return {"ok": True, "sent": 0, "simulated": 0, "failed": 0,
+                "message": "Everyone registered has already had a reminder today."}
+
+    results = send_jobs(picked, today)
+    sent = [r for r in results if str(r["status"]).startswith("SENT")]
+    simulated = [r for r in results if str(r["status"]).startswith("SIMULATED")]
+    failed = [r for r in results if str(r["status"]).startswith("FAILED")]
+    log(mode, "class.remind_email", event_id,
+        {"sent": len(sent), "simulated": len(simulated), "failed": len(failed)})
+
+    if simulated:
+        msg = (f"Simulated {len(simulated)} reminder(s) — email sending is switched off, "
+               "so nothing left the server.")
+    elif failed and sent:
+        msg = f"Sent {len(sent)}, but {len(failed)} failed. Failed ones retry automatically."
+    elif failed:
+        msg = f"Couldn't send — {failed[0]['status']}"
+    else:
+        msg = f"Reminder emailed to {len(sent)} registered dealer(s)."
+    return {"ok": not (failed and not sent), "sent": len(sent),
+            "simulated": len(simulated), "failed": len(failed), "message": msg}
+
+
 def set_class_active(repo, event_id, mode, code, active):
     """Cancel (active=False) or reinstate (active=True) one class.
 

@@ -236,7 +236,8 @@ class Handler(BaseHTTPRequestHandler):
                          "/api/hub/close-class", "/api/hub/reopen-class",
                          "/api/hub/reminders", "/api/hub/create-class",
                          "/api/hub/remove-registration", "/api/hub/flier",
-                         "/api/hub/branch-phone", "/api/hub/set-active"):
+                         "/api/hub/branch-phone", "/api/hub/set-active",
+                         "/api/hub/email-reminders"):
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 payload = json.loads(self.rfile.read(length) or b"{}")
@@ -248,6 +249,10 @@ class Handler(BaseHTTPRequestHandler):
                 elif post_path.endswith("/create-class"):
                     from src.hub_modes import create_class
                     result = create_class(self.repo, mode, code, payload.get("fields") or {})
+                elif post_path.endswith("/email-reminders"):
+                    from src.hub_modes import send_class_reminders
+                    result = send_class_reminders(self.repo,
+                                                  payload.get("event_id", ""), mode, code)
                 elif post_path.endswith("/set-active"):
                     from src.hub_modes import set_class_active
                     result = set_class_active(self.repo, payload.get("event_id", ""),
