@@ -10,13 +10,20 @@ from pathlib import Path
 # --- paths -------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 STATIC = HERE / "static"
-DATA = HERE / "data"
+
+# Everything that is read or written at runtime lives under DATA. Point
+# APP_DATA_DIR at a mounted volume on a host with an ephemeral filesystem
+# (Railway et al) and the DB, the Excel mirror, the catalog, the fliers and the
+# email ledger all persist across deploys together. Also what lets a test run
+# against a scratch copy instead of the real thing.
+DATA = Path(os.environ.get("APP_DATA_DIR") or (HERE / "data")).expanduser()
 
 # Which catalog to serve. Override for a temp test, e.g.
 #   EVENTS_XLSX=data/events_june_test.xlsx python3 server.py
 _env_events = os.environ.get("EVENTS_XLSX")
 EVENTS_XLSX = (Path(_env_events) if _env_events and Path(_env_events).is_absolute()
-               else HERE / (_env_events or "data/OFFICIAL_CLASS_SCHEDULE.xlsx"))
+               else HERE / _env_events if _env_events
+               else DATA / "OFFICIAL_CLASS_SCHEDULE.xlsx")
 
 # Real program-dealer directory (Customer ID, Customer Name, Sales Rep). The form
 # offers these names as a typeahead; account # and TM are resolved server-side so
