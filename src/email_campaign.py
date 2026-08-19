@@ -16,6 +16,7 @@ Reads the same sources as the app: the SQLite repo (registrations) and
 events.xlsx via src.catalog. Writes only inside data/email_campaign/.
 """
 import smtplib
+import threading
 import time
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
@@ -468,6 +469,18 @@ def _deliver(job):
         return f"FAILED — {type(e).__name__}: {e}"
 
 
+def _row_stage(rec):
+    """The stage on one outbox row, or None when it can't be read.
+
+    outbox.xlsx is a spreadsheet a person can open and edit, so a blank or
+    re-typed cell must not raise in the middle of a send.
+    """
+    try:
+        return int(rec.get("stage_days"))
+    except (TypeError, ValueError):
+        return None
+
+
 def sent_keys():
     """(reg_id, stage) pairs already sent, from outbox.xlsx — the dedupe ledger.
 
@@ -491,13 +504,17 @@ def sent_keys():
 
 
 def reminded_today(event_id, today=None):
-    """reg_ids that already got a reminder for this class today.
+    """reg_ids that already got a REMINDER for this class today.
 
     The (reg, stage) ledger alone can't stop a double-click on the Admin
     "send now" button: the second press skips the stage it just sent and falls
     through to the next one, which is a different key but the same dealer
     getting mail twice in a row. Same-day is the guard that matches what a
     person would call a duplicate.
+
+    Registration receipts share this ledger but are NOT reminders: someone who
+    signed up this morning has had no reminder at all, and counting their
+    receipt here would silently drop them from today's send.
     """
     today = today or date.today()
     if not CAMPAIGN_OUTBOX_XLSX.exists():
@@ -507,6 +524,8 @@ def reminded_today(event_id, today=None):
     for row in ws.iter_rows(min_row=2, values_only=True):
         rec = dict(zip(OUTBOX_COLUMNS, row))
         if str(rec.get("event_id") or "") != str(event_id):
+            continue
+        if _row_stage(rec) == CONFIRM_STAGE:
             continue
         if str(rec.get("status") or "").strip().upper().startswith("FAILED"):
             continue
@@ -534,34 +553,46 @@ def run_sender(today=None):
     return send_jobs(due_jobs(today), today)
 
 
+# The outbox is a single .xlsx rewritten whole on every append. Registration
+# receipts are sent from request threads, so two dealers signing up at once
+# would otherwise read-modify-write the same workbook concurrently: rows vanish,
+# and a half-finished save leaves a file that sent_keys() can no longer load —
+# taking the reminder dedupe down with it.
+_OUTBOX_LOCK = threading.Lock()
+
+
 def send_jobs(jobs, today=None):
     """Deliver these jobs and append one outbox row each.
 
-    The daily scheduler and the Admin lens "send now" button both come through
-    here, so they share one ledger: a reminder sent by hand this afternoon is
-    already recorded when tonight's run computes what's due, and the dealer
-    never gets it twice.
+    The daily scheduler, the Admin lens "send now" button and the registration
+    receipt all come through here, so they share one ledger: a reminder sent by
+    hand this afternoon is already recorded when tonight's run computes what's
+    due, and the dealer never gets it twice.
     """
     today = today or date.today()
     if not jobs:
         return []
 
-    if CAMPAIGN_OUTBOX_XLSX.exists():
-        wb = load_workbook(CAMPAIGN_OUTBOX_XLSX)
-        ws = wb.active
-    else:
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "outbox"
-        ws.append(OUTBOX_COLUMNS)
-
+    # Deliver first, outside the lock: SMTP is slow and one dealer's send must
+    # not hold the ledger against everyone else's.
     now = datetime.now().isoformat(timespec="seconds")
     for j in jobs:
         j["status"] = _deliver(j)
-        ws.append([now, str(today), j["stage"], str(j["send_on"]), j["reg_id"],
-                   j["reg"]["contact_email"], j["reg"]["company_name"],
-                   j["view"]["event_id"], j["view"]["topic"], str(j["class_date"]),
-                   j["subject"], f"emails/{j['html_name']}", j["status"]])
-    CAMPAIGN_OUTBOX_XLSX.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(CAMPAIGN_OUTBOX_XLSX)
+
+    with _OUTBOX_LOCK:
+        if CAMPAIGN_OUTBOX_XLSX.exists():
+            wb = load_workbook(CAMPAIGN_OUTBOX_XLSX)
+            ws = wb.active
+        else:
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "outbox"
+            ws.append(OUTBOX_COLUMNS)
+        for j in jobs:
+            ws.append([now, str(today), j["stage"], str(j["send_on"]), j["reg_id"],
+                       j["reg"]["contact_email"], j["reg"]["company_name"],
+                       j["view"]["event_id"], j["view"]["topic"], str(j["class_date"]),
+                       j["subject"], f"emails/{j['html_name']}", j["status"]])
+        CAMPAIGN_OUTBOX_XLSX.parent.mkdir(parents=True, exist_ok=True)
+        wb.save(CAMPAIGN_OUTBOX_XLSX)
     return jobs
