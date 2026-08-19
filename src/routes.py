@@ -1,6 +1,7 @@
 """HTTP routing only. Business logic lives in the sibling modules; the repository
 is reached via self.server.repo (set in server.py)."""
 import json
+import threading
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -12,6 +13,7 @@ from src.export import registrations_xlsx_bytes, write_registrations_xlsx
 from src.qr_pack import qr_pack_html
 from src.db.sqlite_repo import SeatsUnavailable
 from src.registrations import build_registration
+from src.email_campaign import send_confirmation
 
 CONTENT_TYPES = {".html": "text/html", ".css": "text/css", ".js": "application/javascript",
                  ".ico": "image/x-icon", ".svg": "image/svg+xml", ".png": "image/png",
@@ -350,6 +352,17 @@ class Handler(BaseHTTPRequestHandler):
             write_registrations_xlsx(self.repo)  # refresh the live Excel mirror
         except Exception as e:  # noqa: BLE001 - row is safely in the DB regardless
             print(f"  warning: couldn't refresh registrations.xlsx ({e}); row saved to DB")
+
+        # The confirmation receipt. Off the request thread on purpose: SMTP has a
+        # 30s timeout and the seats are already committed, so making the dealer
+        # watch a spinner while Gmail is slow would be the worst of both worlds.
+        # Failures land in the outbox ledger and the server log, never in the UI.
+        def _confirm():
+            status = send_confirmation(result["registration_id"], reg, result["attendees"])
+            print(f"  confirmation for reg {result['registration_id']}: {status}")
+
+        threading.Thread(target=_confirm, daemon=True).start()
+
         self._send_json({
             "ok": True,
             "returning_count": result["returning_count"],

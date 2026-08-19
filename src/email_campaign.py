@@ -33,7 +33,21 @@ from src.db import get_repository
 
 # --- the three reminder stages -------------------------------------------------
 # Same email skeleton, different urgency. `accent` colors the countdown chip.
+# Stage 0 is not a reminder — it's the receipt sent the moment someone
+# registers. It rides the same skeleton so the confirmation and the reminders
+# are visibly one family of mail, and so a template fix lands on all four.
+CONFIRM_STAGE = 0
+
 STAGES = {
+    CONFIRM_STAGE: {
+        "eyebrow": "YOU'RE REGISTERED",
+        "chip": "SEATS CONFIRMED",
+        "headline": "YOU'RE IN — SEATS CONFIRMED",
+        "lead": ("Thanks — your team's seats are reserved. Everything you need is "
+                 "below; add it to your calendar now so the date is locked in. "
+                 "We'll email you again as the class gets close."),
+        "accent": "#1f8a4c",
+    },
     7: {
         "eyebrow": "ONE WEEK OUT",
         "chip": "7 DAYS TO GO",
@@ -69,6 +83,8 @@ OUTBOX_COLUMNS = ["sent_at", "simulated_today", "stage_days", "send_on", "reg_id
 
 
 def _subject(stage, view):
+    if stage == CONFIRM_STAGE:
+        return f"You're registered: {view['topic']} — {view['date_display']}"
     if stage == 1:
         return f"Tomorrow: {view['topic']} — be prepared!"
     return f"{stage} days to go: {view['topic']} — {view['date_display']}"
@@ -190,6 +206,13 @@ def _prep_checklist(view):
             f'<ul style="margin:0;padding-left:18px;">{lis}</ul></div>')
 
 
+def _footer_note(stage):
+    if stage == CONFIRM_STAGE:
+        return "Registration confirmation. Reply to this email to change your team."
+    return (f"Automated class reminder ({stage} day"
+            f"{'s' if stage != 1 else ''} before your class).")
+
+
 def render_email(job):
     """One full HTML email for a (registration x stage) job."""
     reg, view, ev, stage = job["reg"], job["view"], job["event"], job["stage"]
@@ -281,13 +304,74 @@ def render_email(job):
   <!-- footer (matches .ma-footer) -->
   <tr><td style="background:#06192e;padding:18px 28px;">
     <p style="margin:0;font-family:Barlow,Arial,sans-serif;font-size:12px;color:#b9cadb;">
-      M&amp;A Supply Company — Training Hub &middot; Automated class reminder
-      ({stage} day{'s' if stage != 1 else ''} before your class).</p>
+      M&amp;A Supply Company — Training Hub &middot; {_footer_note(stage)}</p>
   </td></tr>
 
 </table>
 </td></tr></table>
 </body></html>"""
+
+
+# --- the registration receipt ------------------------------------------------------
+
+def confirmation_job(reg_id, reg, attendees):
+    """Build the stage-0 job for a registration that was just saved.
+
+    Takes the values the request already has in hand rather than re-reading the
+    table: the confirmation is sent on the write path, so a full scan per signup
+    would get more expensive with every registration ever taken.
+
+    Returns None when the class can't be resolved — an unknown or deactivated
+    event is not worth failing a completed registration over.
+    """
+    events, _, _ = load_catalog()
+    ev = events.get(reg["event_id"])
+    if not ev or not is_active(ev):
+        return None
+    view = event_view(ev)
+    joined = ", ".join(f"{a['name']} ({a['role']})" if a.get("role") else a["name"]
+                       for a in attendees) or "(no attendee names on file)"
+    return {
+        "reg_id": reg_id,
+        # the flat shape the templates expect, same keys all_registrations_flat gives
+        "reg": {"contact_email": reg["contact_email"],
+                "company_name": reg["company_name"],
+                "num_attending": reg["num_attending"],
+                "attendees": joined},
+        "event": ev,
+        "view": view,
+        "class_date": datetime.strptime(str(ev["event_date"]), "%Y-%m-%d").date(),
+        "stage": CONFIRM_STAGE,
+        "send_on": date.today(),
+        "subject": _subject(CONFIRM_STAGE, view),
+        "html_name": f"{reg_id:04d}_confirmation.html",
+        "ics_name": f"{reg_id:04d}_invite.ics",
+    }
+
+
+def send_confirmation(reg_id, reg, attendees):
+    """Send the "you're registered" receipt. Never raises.
+
+    The seats are already committed by the time this runs, so nothing here is
+    allowed to turn a successful registration into an error the dealer sees.
+    Delivery goes through send_jobs() so the receipt lands in the same outbox
+    ledger as the reminders and is auditable next to them.
+    """
+    try:
+        job = confirmation_job(reg_id, reg, attendees)
+        if job is None:
+            return "SKIPPED — class not found or inactive"
+        # keep the copy the dealer was sent, so the outbox's html_file column
+        # points at something real for receipts the way it does for reminders
+        try:
+            EMAIL_OUT_DIR.mkdir(parents=True, exist_ok=True)
+            (EMAIL_OUT_DIR / job["html_name"]).write_text(render_email(job), encoding="utf-8")
+        except OSError:
+            pass          # a read-only disk must not cost the dealer their receipt
+        send_jobs([job], date.today())
+        return job.get("status", "UNKNOWN")
+    except Exception as e:  # noqa: BLE001 - a mail fault must not surface as a failed signup
+        return f"FAILED — {type(e).__name__}: {e}"
 
 
 # --- step 1: generate ---------------------------------------------------------------
