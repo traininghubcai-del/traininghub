@@ -20,6 +20,13 @@ function showGate(html) {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
   "August", "September", "October", "November", "December"];
 
+// One definition of a class's display location — used by the index rows, the
+// hover card and the Location filter, so the dropdown can never drift from the
+// column it filters.
+function locLabel(e) {
+  return e.state ? `${e.region}, ${e.state}` : (e.region || "");
+}
+
 // Compact one-line class list with keyword search + month filter. Same dense row
 // dense one-line rows so a long list stays scannable.
 async function showIndex(intro) {
@@ -41,6 +48,19 @@ async function showIndex(intro) {
       return `<option value="${k}">${MONTH_NAMES[+m - 1]} ${y}</option>`;
     })).join("");
 
+    // location options present in the data. Keyed off the SAME string the row's
+    // Location column renders, so the dropdown and the column always agree —
+    // the raw branch field is inconsistent ("101- Nashville" vs "Ft. Smith, AR").
+    const locs = [];
+    const locSeen = new Set();
+    events.forEach((e) => {
+      const k = locLabel(e);
+      if (k && !locSeen.has(k)) { locSeen.add(k); locs.push(k); }
+    });
+    locs.sort((a, b) => a.localeCompare(b));
+    const locOpts = ['<option value="">All locations</option>'].concat(
+      locs.map((k) => `<option value="${escHtml(k)}">${escHtml(k)}</option>`)).join("");
+
     showGate(
       `<div class="ma-gate-box">
          <p class="ma-eyebrow">M&amp;A SUPPLY · TRAINING NETWORK</p>
@@ -55,6 +75,7 @@ async function showIndex(intro) {
          </div>
          <div class="ma-reg-tools">
            <input id="reg-q" class="ma-reg-search" type="search" placeholder="Search class, location or FSR…" autocomplete="off" aria-label="Search classes" />
+           <select id="reg-loc" class="ma-reg-month" aria-label="Filter by location">${locOpts}</select>
            <select id="reg-m" class="ma-reg-month" aria-label="Filter by month">${monthOpts}</select>
            <span class="ma-reg-count" id="reg-count"></span>
          </div>
@@ -75,10 +96,11 @@ async function showIndex(intro) {
     const countEl = document.getElementById("reg-count");
     const q = document.getElementById("reg-q");
     const mSel = document.getElementById("reg-m");
+    const locSel = document.getElementById("reg-loc");
     const printBtn = document.getElementById("print-pack");
 
     const rowHTML = (e) => {
-      const loc = e.state ? `${e.region}, ${e.state}` : (e.region || "");
+      const loc = locLabel(e);
       const a = ADMIN_ROWS[e.event_id];
       // ADMIN-VIEW adds the operational numbers the public list hides
       const adminCells = a
@@ -115,7 +137,9 @@ async function showIndex(intro) {
     const render = () => {
       const term = (q.value || "").trim().toLowerCase();
       const mk = mSel.value;
+      const lk = locSel.value;
       const shown = events.filter((e) => {
+        if (lk && locLabel(e) !== lk) return false;
         if (mk && (e.event_date || "").slice(0, 7) !== mk) return false;
         if (term) {
           const hay = `${e.topic} ${e.region} ${e.state} ${e.trainer}`.toLowerCase();
@@ -164,6 +188,7 @@ async function showIndex(intro) {
 
     q.addEventListener("input", render);
     mSel.addEventListener("change", render);
+    locSel.addEventListener("change", render);
     listRender = render;
     render();
     initRowCards(list, events);
@@ -195,7 +220,7 @@ function initRowCards(listEl, events) {
 
   const build = (e) => {
     const where = e.class_address || e.event_location || "";
-    const loc = e.state ? `${e.region}, ${e.state}` : (e.region || "");
+    const loc = locLabel(e);
     const bits = [
       ["When", `${escHtml(e.weekday_display)}, ${escHtml(e.date_display)} &middot; ${escHtml(e.time_display)}`],
       ["Where", [where, loc].filter(Boolean).map(escHtml).join(" &middot; ")],
