@@ -221,14 +221,24 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"dealers": dealer_directory()})
             except Exception as e:  # noqa: BLE001
                 self._send_json({"error": f"Could not load dealers: {e}"}, 500)
-        elif path == "/api/registrations":
-            self._send_json({"registrations": self.repo.all_registrations_flat()})
-        elif path == "/api/export.xlsx":
-            body = registrations_xlsx_bytes(self.repo)
-            self._send_bytes(
-                body,
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                {"Content-Disposition": 'attachment; filename="registrations.xlsx"'})
+        elif path in ("/api/registrations", "/api/export.xlsx"):
+            # Every dealer's name, work email, phone, company and territory
+            # manager lives behind these two. They were open to anyone who
+            # guessed the URL; both now need the admin code, like /api/hub/*.
+            from src.hub_modes import verify
+            q = parse_qs(parsed.query)
+            code = (q.get("code") or [""])[0].strip()
+            if not verify("admin", code):
+                self._send_json(
+                    {"ok": False, "error": "Locked.", "need_code": True}, 403)
+            elif path == "/api/registrations":
+                self._send_json({"registrations": self.repo.all_registrations_flat()})
+            else:
+                body = registrations_xlsx_bytes(self.repo)
+                self._send_bytes(
+                    body,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    {"Content-Disposition": 'attachment; filename="registrations.xlsx"'})
         else:
             self.send_error(404, "Not found")
 
