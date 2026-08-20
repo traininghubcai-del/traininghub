@@ -24,7 +24,8 @@ import sys
 import time
 from http.server import ThreadingHTTPServer
 
-from config import EMAIL_DAILY_SEND, EMAIL_SEND_HOUR
+from config import DATA, EMAIL_DAILY_SEND, EMAIL_SEND_HOUR
+from src.bootstrap import seed_data_dir
 from src.db import get_repository
 from src.export import write_registrations_xlsx
 from src.routes import Handler
@@ -61,6 +62,12 @@ def main():
     # Both are overridable; 8080 is the local-dev fallback, never a prod value.
     port = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.environ.get("PORT", 8080))
     host = os.environ.get("HOST", "0.0.0.0")
+    # A mounted volume starts empty, and DATA is where the class catalog is read
+    # from — so seed it before anything tries to read a class.
+    seeded = seed_data_dir()
+    if seeded:
+        print(f"  seeded {DATA} with {len(seeded)} bundled file(s): {', '.join(seeded)}")
+
     repo = get_repository()
     repo.init()
     try:
