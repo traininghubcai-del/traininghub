@@ -24,6 +24,7 @@ import sys
 import time
 from http.server import ThreadingHTTPServer
 
+from config import EMAIL_DAILY_SEND, EMAIL_SEND_HOUR
 from src.db import get_repository
 from src.export import write_registrations_xlsx
 from src.routes import Handler
@@ -66,6 +67,14 @@ def main():
         write_registrations_xlsx(repo)  # make sure data/registrations.xlsx exists & is current
     except Exception as e:  # noqa: BLE001
         print(f"  warning: couldn't write registrations.xlsx at startup ({e})")
+
+    # The 7/3/1-day reminders, if this deploy is the one that owns them. Started
+    # before the server binds so a start-up failure is visible in the deploy log
+    # rather than in the first request that happens to trigger mail.
+    if EMAIL_DAILY_SEND:
+        from src.scheduler import start as start_scheduler
+        start_scheduler()
+        print(f"  daily reminder run armed for {EMAIL_SEND_HOUR:02d}:00 local time")
 
     _free_port(port)
     ThreadingHTTPServer.allow_reuse_address = True

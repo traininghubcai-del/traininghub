@@ -55,8 +55,9 @@ COLUMNS = [
 
 # --- email campaign ------------------------------------------------------------
 # Everything the campaign produces lives under data/email_campaign/ (generated,
-# git-ignored). The sender is simulated until a mail provider is wired in:
-# "sending" = appending the email's row to OUTBOX_XLSX so it can be demoed.
+# git-ignored). Mail goes out through the Brevo SMTP relay; every send, real or
+# simulated, appends its row to OUTBOX_XLSX, which is the dedupe ledger as well
+# as the audit trail. See docs/RULE-email-sending.md.
 EMAIL_CAMPAIGN_DIR = DATA / "email_campaign"
 EMAIL_OUT_DIR = EMAIL_CAMPAIGN_DIR / "emails"
 CAMPAIGN_SCHEDULE_XLSX = EMAIL_CAMPAIGN_DIR / "campaign_schedule.xlsx"
@@ -67,23 +68,56 @@ REMINDER_DAYS = [7, 3, 1]            # days before class -> one reminder email e
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "traininghubcai@gmail.com")
 EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "M&A Supply Training")
 
-# Gmail SMTP. The password is a 16-character Google App Password, NOT the
-# account password — it needs 2-Step Verification switched on for the account.
-# Everything here comes from the environment: no credential is ever committed.
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+# Brevo SMTP relay. Everything comes from the environment: no credential is
+# ever committed.
+#
+# Three fields, and the two easy ones are the ones people get wrong:
+#   SMTP_USER     The Brevo *SMTP login*, from Brevo -> SMTP & API -> SMTP.
+#                 It is NOT the address mail is sent from — Brevo issues its own
+#                 login, usually like "9a1b2c001@smtp-brevo.com". Sending the
+#                 account's Gmail address here fails with 535 Authentication
+#                 failed, which reads like a bad password and is not one.
+#   SMTP_PASSWORD The Brevo SMTP key ("xsmtpsib-..."), from the same page. This
+#                 is a different credential from a Brevo API key ("xkeysib-...");
+#                 the two are not interchangeable in either direction.
+#   EMAIL_FROM    Must be a sender Brevo has verified, or it rejects the message
+#                 after a successful login. Add and confirm it under Senders.
+#
+# Left as a default so no fallback can quietly point a Brevo key at the wrong
+# host: a mismatch here is the difference between "sent" and 535.
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp-relay.brevo.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER = os.environ.get("SMTP_USER", EMAIL_FROM)
-SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+# No fallback to EMAIL_FROM on purpose. That default was right for Gmail, where
+# login and sender are the same address, and is wrong for every relay that
+# issues its own login — it turns a missing setting into a confusing auth error
+# instead of a clear "SMTP_USER is not set".
+SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "").strip()
 EMAIL_REPLY_TO = os.environ.get("EMAIL_REPLY_TO", EMAIL_FROM)
+# 587 speaks STARTTLS, 465 is TLS from the first byte. Derived from the port so
+# switching ports is one variable, not two, and overridable for an odd relay.
+SMTP_SSL = os.environ.get("SMTP_SSL", "").strip().lower() in ("1", "true", "yes", "on") \
+    or SMTP_PORT == 465
 
 # The master switch. Deploying this code does NOT start sending — mail only
 # leaves the machine when EMAIL_SEND_ENABLED is explicitly turned on, so a
 # push can never surprise a dealer with a duplicate reminder.
 EMAIL_SEND_ENABLED = os.environ.get("EMAIL_SEND_ENABLED", "").strip().lower() \
     in ("1", "true", "yes", "on")
-# Gmail throttles bursts harder than it throttles volume. One second between
-# messages keeps a full day's batch comfortably under its rate limits.
+# Relays throttle bursts harder than they throttle volume. One second between
+# messages keeps a full day's batch comfortably under Brevo's rate limits.
 EMAIL_SEND_PAUSE = float(os.environ.get("EMAIL_SEND_PAUSE", "1.0"))
+
+# The daily reminder run, inside the web process (see src/scheduler.py). Off by
+# default and separate from EMAIL_SEND_ENABLED on purpose: one says mail may
+# leave the machine, this says the machine may decide on its own when to send.
+# Turning only the first on leaves the Admin "send reminders" button working and
+# the 7/3/1-day schedule dormant, which is the right state to deploy into first.
+EMAIL_DAILY_SEND = os.environ.get("EMAIL_DAILY_SEND", "").strip().lower() \
+    in ("1", "true", "yes", "on")
+# Hour of the local day the run happens, 0-23. Containers are UTC unless told
+# otherwise, so set TZ=America/Chicago alongside this or 8 means 3am for John.
+EMAIL_SEND_HOUR = int(os.environ.get("EMAIL_SEND_HOUR", "8"))
 
 # --- form / display tunables -------------------------------------------------
 ROLES = ["Technician", "Inside Sales", "Outside Sales", "Owner"]  # mirror static/app.js

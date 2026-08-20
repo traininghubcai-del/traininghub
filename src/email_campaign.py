@@ -1,22 +1,26 @@
 """Email campaign: per-student reminder emails 7 / 3 / 1 days before class.
 
-Pipeline (all local — no mail provider yet):
+Pipeline:
   1. ``generate_emails()`` — for every registration with an upcoming class,
      render one branded HTML email per reminder stage (7/3/1 days out, same
      design language as the landing page) plus an ``.ics`` calendar invite,
      into ``data/email_campaign/emails/``. File names start with the
      registration id. The full plan is written to ``campaign_schedule.xlsx``.
   2. ``run_sender(today)`` — finds the stage emails due on ``today`` (or
-     overdue and never sent) and "sends" them. Today that means appending one
-     row per email to ``outbox.xlsx`` so every send can be inspected/demoed.
-     When a provider is chosen, only ``_deliver()`` changes — the schedule and
-     dedupe logic stay exactly as they are.
+     overdue and never sent) and sends them through the Brevo SMTP relay,
+     appending one row per email to ``outbox.xlsx``. That ledger is what makes
+     the run re-runnable: it is read back by ``sent_keys()`` to decide what has
+     already gone out. With ``EMAIL_SEND_ENABLED`` off the whole path still
+     runs and every row lands as SIMULATED, so a demo costs no mail — and
+     burns those reminders, since a simulated row still counts as sent.
+     Settings and the two switches: ``docs/RULE-email-sending.md``.
 
 Reads the same sources as the app: the SQLite repo (registrations) and
 events.xlsx via src.catalog. Writes only inside data/email_campaign/.
 """
 import os
 import smtplib
+import ssl
 import threading
 import time
 from datetime import date, datetime, timedelta
@@ -29,7 +33,7 @@ from openpyxl import Workbook, load_workbook
 from config import (CAMPAIGN_OUTBOX_XLSX, CAMPAIGN_SCHEDULE_XLSX, EMAIL_FROM,
                     EMAIL_FROM_NAME, EMAIL_OUT_DIR, EMAIL_REPLY_TO,
                     EMAIL_SEND_ENABLED, EMAIL_SEND_PAUSE, REMINDER_DAYS,
-                    SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER)
+                    SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL, SMTP_USER)
 from src.catalog import event_view, is_active, load_catalog
 from src.db import get_repository
 
@@ -408,7 +412,7 @@ def generate_emails(today=None):
     return jobs
 
 
-# --- step 2: send (simulated until a provider is wired) ------------------------------
+# --- step 2: send -------------------------------------------------------------------
 
 def _plain_text(job):
     """Text fallback for clients that won't render HTML. Every mail is sent
@@ -423,49 +427,120 @@ def _plain_text(job):
             "the seat can go to another dealer.\n")
 
 
-def _deliver(job):
-    """Send one reminder through Gmail SMTP, with the .ics attached.
+def missing_settings():
+    """Which mail settings are unset, in the words the person setting them uses.
+
+    One list, so the send path, the /api/mail-status endpoint and tools/mail_test.py
+    all say the same thing about the same misconfiguration instead of each
+    inventing its own phrasing.
+    """
+    missing = []
+    if not SMTP_HOST:
+        missing.append("SMTP_HOST")
+    if not SMTP_USER:
+        missing.append("SMTP_USER (the Brevo SMTP login, not the from address)")
+    if not SMTP_PASSWORD:
+        missing.append("SMTP_PASSWORD (the Brevo SMTP key, xsmtpsib-...)")
+    if not EMAIL_FROM:
+        missing.append("EMAIL_FROM")
+    return missing
+
+
+def smtp_connect():
+    """One authenticated connection to the relay. Raises on failure.
+
+    Separated from sending so the diagnostic tool can prove the credentials
+    work without putting a message in front of a dealer.
+    """
+    ctx = ssl.create_default_context()
+    if SMTP_SSL:
+        conn = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30, context=ctx)
+    else:
+        conn = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30)
+        conn.ehlo()
+        conn.starttls(context=ctx)
+        conn.ehlo()
+    conn.login(SMTP_USER, SMTP_PASSWORD)
+    return conn
+
+
+def _auth_hint(e):
+    """Turn a 535 into the thing that is actually wrong.
+
+    Brevo returns the same "authentication failed" for a bad key and for the
+    single most common mistake — putting the sending address in SMTP_USER when
+    Brevo issues its own login. Guessing wrong here costs an afternoon, so the
+    status string names both and says where to look.
+    """
+    code = getattr(e, "smtp_code", "")
+    detail = getattr(e, "smtp_error", b"")
+    detail = detail.decode("utf-8", "replace") if isinstance(detail, bytes) else str(detail)
+    hint = ("check SMTP_USER is the Brevo SMTP login from Brevo -> SMTP & API "
+            "(often 9a1b2c001@smtp-brevo.com), NOT the from address, and that "
+            "SMTP_PASSWORD is the SMTP key")
+    return f"FAILED — {SMTP_HOST} rejected the login ({code} {detail.strip()}); {hint}"
+
+
+def _build(job, to):
+    """The multipart message for one job: text, HTML, and the .ics invite."""
+    msg = EmailMessage()
+    msg["Subject"] = job["subject"]
+    msg["From"] = formataddr((EMAIL_FROM_NAME, EMAIL_FROM))
+    msg["To"] = to
+    msg["Reply-To"] = EMAIL_REPLY_TO
+    msg.set_content(_plain_text(job))
+    msg.add_alternative(render_email(job), subtype="html")
+    msg.add_attachment(
+        ics_text(job["event"], job["view"], job["reg_id"]).encode("utf-8"),
+        maintype="text", subtype="calendar", filename=job["ics_name"])
+    return msg
+
+
+def _deliver(job, conn=None):
+    """Send one email through the SMTP relay, with the .ics attached.
 
     Returns the string that lands in the outbox `status` column. That string is
     load-bearing: sent_keys() treats a row as "already sent" unless the status
     says it failed, so a bounce or an auth error retries on the next run instead
-    of being silently swallowed.
+    of being silently swallowed. Which is also why every failure path here says
+    what went wrong in full — the outbox is the only place that text survives.
 
-    Nothing leaves the machine unless EMAIL_SEND_ENABLED is on AND a password is
-    configured — either missing and this stays a simulation.
+    Nothing leaves the machine unless EMAIL_SEND_ENABLED is on AND the settings
+    are complete — either missing and this stays a simulation.
+
+    `conn` is a live connection from send_jobs(), reused across a batch. Without
+    one this opens and closes its own, so a single receipt still sends.
     """
     if not EMAIL_SEND_ENABLED:
         return "SIMULATED — written to outbox, no email left this machine"
-    if not SMTP_PASSWORD:
-        return "FAILED — SMTP_PASSWORD is not set; nothing was sent"
+    missing = missing_settings()
+    if missing:
+        return f"FAILED — not configured: {', '.join(missing)}; nothing was sent"
 
     to = str(job["reg"].get("contact_email", "")).strip()
     if not to:
         return "FAILED — registration has no contact email"
 
     try:
-        msg = EmailMessage()
-        msg["Subject"] = job["subject"]
-        msg["From"] = formataddr((EMAIL_FROM_NAME, EMAIL_FROM))
-        msg["To"] = to
-        msg["Reply-To"] = EMAIL_REPLY_TO
-        msg.set_content(_plain_text(job))
-        msg.add_alternative(render_email(job), subtype="html")
-        msg.add_attachment(
-            ics_text(job["event"], job["view"], job["reg_id"]).encode("utf-8"),
-            maintype="text", subtype="calendar", filename=job["ics_name"])
-
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as s:
-            s.starttls()
-            s.login(SMTP_USER, SMTP_PASSWORD)
-            s.send_message(msg)
+        msg = _build(job, to)
+        if conn is not None:
+            conn.send_message(msg)
+        else:
+            with smtp_connect() as s:
+                s.send_message(msg)
         if EMAIL_SEND_PAUSE > 0:
-            time.sleep(EMAIL_SEND_PAUSE)     # stay under Gmail's burst limits
+            time.sleep(EMAIL_SEND_PAUSE)     # stay under the relay's burst limits
         return f"SENT to {to}"
-    except smtplib.SMTPAuthenticationError:
-        # Almost always a plain account password instead of an App Password,
-        # or 2-Step Verification not enabled on the account.
-        return "FAILED — SMTP login rejected (use a Google App Password)"
+    except smtplib.SMTPAuthenticationError as e:
+        return _auth_hint(e)
+    except smtplib.SMTPSenderRefused as e:
+        # Login worked, the From address did not. On Brevo that is a sender that
+        # was never verified — the message is refused after a clean handshake,
+        # which looks nothing like an auth problem from the outside.
+        return (f"FAILED — {EMAIL_FROM} was refused as the sender ({e.smtp_code} "
+                f"{e.smtp_error!r}); verify it under Brevo -> Senders")
+    except smtplib.SMTPRecipientsRefused as e:
+        return f"FAILED — {to} was refused: {e.recipients}"
     except Exception as e:  # noqa: BLE001 - one bad address must not stop the batch
         return f"FAILED — {type(e).__name__}: {e}"
 
@@ -576,9 +651,40 @@ def send_jobs(jobs, today=None):
 
     # Deliver first, outside the lock: SMTP is slow and one dealer's send must
     # not hold the ledger against everyone else's.
+    #
+    # One connection for the whole batch. A day's reminders reconnecting and
+    # re-authenticating per message is what trips a relay's connection limits
+    # first — well before the message count matters. If the connection can't be
+    # opened at all, every job still goes through _deliver() to get the real
+    # reason written into its own outbox row, rather than the batch dying with
+    # one error nobody can see.
     now = datetime.now().isoformat(timespec="seconds")
-    for j in jobs:
-        j["status"] = _deliver(j)
+    conn = None
+    if EMAIL_SEND_ENABLED and not missing_settings():
+        try:
+            conn = smtp_connect()
+        except Exception:  # noqa: BLE001 - _deliver reports it per job
+            conn = None
+    try:
+        for j in jobs:
+            j["status"] = _deliver(j, conn)
+            # A relay that hangs up mid-batch — idle timeout, a rate limit, a
+            # restart on their side — would otherwise fail every remaining job
+            # on a connection that is already gone. Reconnect once and retry
+            # this one; if that fails too, its FAILED row retries tomorrow.
+            if conn is not None and "SMTPServerDisconnected" in str(j["status"]):
+                try:
+                    conn = smtp_connect()
+                except Exception:  # noqa: BLE001 - keep the original failure text
+                    conn = None
+                else:
+                    j["status"] = _deliver(j, conn)
+    finally:
+        if conn is not None:
+            try:
+                conn.quit()
+            except Exception:  # noqa: BLE001 - the mail is already sent
+                pass
 
     with _OUTBOX_LOCK:
         if CAMPAIGN_OUTBOX_XLSX.exists():
@@ -601,12 +707,17 @@ def send_jobs(jobs, today=None):
 
 # --- diagnostics -------------------------------------------------------------
 
-def mail_status():
+def mail_status(probe=False):
     """Why mail is or isn't leaving this server.
 
     Booleans for anything secret: this is a read-only health check, never a way
     to read a credential back out. The outbox tail is the useful part — it
     carries the provider's own rejection text, which is invisible from the UI.
+
+    `probe` opens a real connection and logs in, then hangs up without sending.
+    That is the one question the static fields can't answer — whether the login
+    and the key actually match — and the answer is otherwise only reachable by
+    mailing a live dealer and reading the outbox afterwards.
     """
     from config import DATA
     raw = os.environ.get("EMAIL_SEND_ENABLED", "")
@@ -615,8 +726,15 @@ def mail_status():
         "send_enabled_raw": repr(raw),          # catches "True "/"yes please"/typos
         "smtp_host": SMTP_HOST,
         "smtp_port": SMTP_PORT,
+        # The login is shown in full, unlike the key. It is a username, not a
+        # secret, and it is the field that is actually wrong most of the time:
+        # a boolean here would hide a Gmail address sitting where Brevo's own
+        # login belongs, which is the exact failure this endpoint exists for.
+        "smtp_user": SMTP_USER,
         "smtp_user_set": bool(SMTP_USER),
         "smtp_password_set": bool(SMTP_PASSWORD),
+        "smtp_password_looks_like_brevo_key": SMTP_PASSWORD.startswith("xsmtpsib-"),
+        "missing": missing_settings(),
         "email_from": EMAIL_FROM,               # must be a validated sender
         "reply_to": EMAIL_REPLY_TO,
         "data_dir": str(DATA),
@@ -629,6 +747,18 @@ def mail_status():
         info["data_dir_writable"] = os.access(DATA, os.W_OK)
     except OSError:
         info["data_dir_writable"] = False
+
+    if probe:
+        if missing_settings():
+            info["login_probe"] = f"not configured: {', '.join(missing_settings())}"
+        else:
+            try:
+                smtp_connect().quit()
+                info["login_probe"] = f"OK — logged in to {SMTP_HOST}:{SMTP_PORT}"
+            except smtplib.SMTPAuthenticationError as e:
+                info["login_probe"] = _auth_hint(e)
+            except Exception as e:  # noqa: BLE001 - a health check never raises
+                info["login_probe"] = f"FAILED — {type(e).__name__}: {e}"
     if CAMPAIGN_OUTBOX_XLSX.exists():
         try:
             ws = load_workbook(CAMPAIGN_OUTBOX_XLSX, read_only=True).active

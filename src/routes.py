@@ -230,7 +230,10 @@ class Handler(BaseHTTPRequestHandler):
             if not verify("admin", (q.get("code") or [""])[0].strip()):
                 self._send_json({"ok": False, "error": "Locked.", "need_code": True}, 403)
             else:
-                self._send_json(mail_status())
+                # ?probe=1 also logs in to the relay and hangs up, so the
+                # credentials can be proved without mailing a real dealer.
+                probe = (q.get("probe") or [""])[0].strip() in ("1", "true", "yes")
+                self._send_json(mail_status(probe))
         elif path in ("/api/registrations", "/api/export.xlsx"):
             # Every dealer's name, work email, phone, company and territory
             # manager lives behind these two. They were open to anyone who
