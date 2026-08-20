@@ -37,22 +37,33 @@ def _mask(secret):
 
 
 def _fake_job(to):
-    """The smallest job api_send() will accept — enough to render and attach.
+    """A real class from the catalog, with a fake registration attached.
 
-    Deliberately not a real registration: a test must never be able to mail a
-    dealer, and must work on an install with an empty database.
+    Built through confirmation_job() rather than hand-rolled, so the test renders
+    and attaches through exactly the code a dealer's receipt goes through — a
+    hand-made stand-in would pass while the real template was broken. The
+    registration is fake and the class is only read, so this can never mail a
+    dealer or touch the database.
     """
-    from datetime import date, timedelta
-    when = date.today() + timedelta(days=7)
-    view = {"event_id": "mail-test", "topic": "Mail test", "weekday": when.strftime("%A"),
-            "event_date": str(when), "time_display": "8:00 AM - 12:00 PM",
-            "event_location": "M&A Supply", "address_display": "M&A Supply"}
-    return {"reg_id": 0, "stage": 0, "subject": "Training Hub — mail test",
-            "view": view, "event": {"event_date": str(when)},
-            "class_date": when, "send_on": date.today(),
-            "ics_name": "mail_test.ics",
-            "reg": {"contact_email": to, "company_name": "Mail test",
-                    "num_attending": 1, "attendees": "Test"}}
+    from datetime import date
+
+    from src.catalog import is_active, load_catalog
+    from src.email_campaign import confirmation_job
+
+    events, _, _ = load_catalog()
+    upcoming = sorted((e for e in events.values()
+                       if is_active(e) and str(e.get("event_date", "")) >= str(date.today())),
+                      key=lambda e: str(e.get("event_date", "")))
+    if not upcoming:
+        raise SystemExit("No upcoming class in the catalog to build a test email from.")
+
+    reg = {"event_id": upcoming[0]["event_id"], "contact_email": to,
+           "company_name": "Mail test — not a real registration", "num_attending": 1}
+    job = confirmation_job(0, reg, [{"name": "Mail test", "role": ""}])
+    if job is None:
+        raise SystemExit("Could not build a test email from the catalog.")
+    job["subject"] = "Training Hub — mail test"
+    return job
 
 
 def main():
