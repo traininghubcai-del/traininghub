@@ -15,6 +15,7 @@ Pipeline (all local — no mail provider yet):
 Reads the same sources as the app: the SQLite repo (registrations) and
 events.xlsx via src.catalog. Writes only inside data/email_campaign/.
 """
+import os
 import smtplib
 import threading
 import time
@@ -596,3 +597,48 @@ def send_jobs(jobs, today=None):
         CAMPAIGN_OUTBOX_XLSX.parent.mkdir(parents=True, exist_ok=True)
         wb.save(CAMPAIGN_OUTBOX_XLSX)
     return jobs
+
+
+# --- diagnostics -------------------------------------------------------------
+
+def mail_status():
+    """Why mail is or isn't leaving this server.
+
+    Booleans for anything secret: this is a read-only health check, never a way
+    to read a credential back out. The outbox tail is the useful part — it
+    carries the provider's own rejection text, which is invisible from the UI.
+    """
+    from config import DATA
+    raw = os.environ.get("EMAIL_SEND_ENABLED", "")
+    info = {
+        "send_enabled": EMAIL_SEND_ENABLED,
+        "send_enabled_raw": repr(raw),          # catches "True "/"yes please"/typos
+        "smtp_host": SMTP_HOST,
+        "smtp_port": SMTP_PORT,
+        "smtp_user_set": bool(SMTP_USER),
+        "smtp_password_set": bool(SMTP_PASSWORD),
+        "email_from": EMAIL_FROM,               # must be a validated sender
+        "reply_to": EMAIL_REPLY_TO,
+        "data_dir": str(DATA),
+        "data_dir_exists": DATA.exists(),
+        "outbox_exists": CAMPAIGN_OUTBOX_XLSX.exists(),
+        "outbox_rows": 0,
+        "recent": [],
+    }
+    try:
+        info["data_dir_writable"] = os.access(DATA, os.W_OK)
+    except OSError:
+        info["data_dir_writable"] = False
+    if CAMPAIGN_OUTBOX_XLSX.exists():
+        try:
+            ws = load_workbook(CAMPAIGN_OUTBOX_XLSX, read_only=True).active
+            rows = [r for r in ws.iter_rows(min_row=2, values_only=True) if r and r[0]]
+            info["outbox_rows"] = len(rows)
+            for r in rows[-8:]:
+                rec = dict(zip(OUTBOX_COLUMNS, r))
+                info["recent"].append({"sent_at": str(rec.get("sent_at")),
+                                       "stage": rec.get("stage_days"),
+                                       "status": str(rec.get("status"))})
+        except Exception as e:  # noqa: BLE001
+            info["outbox_error"] = f"{type(e).__name__}: {e}"
+    return info

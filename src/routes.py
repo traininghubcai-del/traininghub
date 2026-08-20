@@ -13,7 +13,7 @@ from src.export import registrations_xlsx_bytes, write_registrations_xlsx
 from src.qr_pack import qr_pack_html
 from src.db.sqlite_repo import SeatsUnavailable
 from src.registrations import build_registration
-from src.email_campaign import send_confirmation
+from src.email_campaign import mail_status, send_confirmation
 
 CONTENT_TYPES = {".html": "text/html", ".css": "text/css", ".js": "application/javascript",
                  ".ico": "image/x-icon", ".svg": "image/svg+xml", ".png": "image/png",
@@ -221,6 +221,16 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json({"dealers": dealer_directory()})
             except Exception as e:  # noqa: BLE001
                 self._send_json({"error": f"Could not load dealers: {e}"}, 500)
+        elif path == "/api/mail-status":
+            # Why mail isn't sending, answered by the server itself. Admin-gated
+            # and deliberately value-free for anything secret: booleans only for
+            # the credentials, so this can never become a way to read them back.
+            from src.hub_modes import verify
+            q = parse_qs(parsed.query)
+            if not verify("admin", (q.get("code") or [""])[0].strip()):
+                self._send_json({"ok": False, "error": "Locked.", "need_code": True}, 403)
+            else:
+                self._send_json(mail_status())
         elif path in ("/api/registrations", "/api/export.xlsx"):
             # Every dealer's name, work email, phone, company and territory
             # manager lives behind these two. They were open to anyone who
