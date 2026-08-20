@@ -22,10 +22,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import (EMAIL_FROM, EMAIL_FROM_NAME, EMAIL_REPLY_TO,  # noqa: E402
-                    EMAIL_SEND_ENABLED, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT,
-                    SMTP_SSL, SMTP_USER)
-from src.email_campaign import missing_settings, smtp_connect  # noqa: E402
+from config import (BREVO_API_KEY, EMAIL_FROM, EMAIL_FROM_NAME,  # noqa: E402
+                    EMAIL_REPLY_TO, EMAIL_SEND_ENABLED, SMTP_HOST,
+                    SMTP_PASSWORD, SMTP_PORT, SMTP_SSL, SMTP_USER)
+from src.email_campaign import (api_probe, api_send, missing_settings,  # noqa: E402
+                                smtp_connect, transport)
 
 
 def _mask(secret):
@@ -35,6 +36,25 @@ def _mask(secret):
     return f"{secret[:12]}...{secret[-4:]}  ({len(secret)} chars)"
 
 
+def _fake_job(to):
+    """The smallest job api_send() will accept — enough to render and attach.
+
+    Deliberately not a real registration: a test must never be able to mail a
+    dealer, and must work on an install with an empty database.
+    """
+    from datetime import date, timedelta
+    when = date.today() + timedelta(days=7)
+    view = {"event_id": "mail-test", "topic": "Mail test", "weekday": when.strftime("%A"),
+            "event_date": str(when), "time_display": "8:00 AM - 12:00 PM",
+            "event_location": "M&A Supply", "address_display": "M&A Supply"}
+    return {"reg_id": 0, "stage": 0, "subject": "Training Hub — mail test",
+            "view": view, "event": {"event_date": str(when)},
+            "class_date": when, "send_on": date.today(),
+            "ics_name": "mail_test.ics",
+            "reg": {"contact_email": to, "company_name": "Mail test",
+                    "num_attending": 1, "attendees": "Test"}}
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -42,6 +62,9 @@ def main():
     args = ap.parse_args()
 
     print("--- settings the app is running with ---")
+    print(f"  TRANSPORT           {transport().upper()}"
+          f"{'   (Brevo HTTP API, port 443)' if transport() == 'api' else '   (SMTP relay)'}")
+    print(f"  BREVO_API_KEY       {_mask(BREVO_API_KEY)}")
     print(f"  SMTP_HOST           {SMTP_HOST}")
     print(f"  SMTP_PORT           {SMTP_PORT}   ({'implicit TLS' if SMTP_SSL else 'STARTTLS'})")
     print(f"  SMTP_USER           {SMTP_USER or '(not set)'}")
@@ -58,6 +81,33 @@ def main():
         for m in missing:
             print(f"  - {m}")
         return 1
+
+    # The API path shares nothing with SMTP but the sender, so it gets its own
+    # short circuit rather than being threaded through the checks below.
+    if transport() == "api":
+        print("\n--- checking the Brevo API key ---")
+        result = api_probe()
+        print(result)
+        if result.startswith("FAILED"):
+            return 1
+        if not args.to:
+            print("\nNo --to given, so nothing was sent. The key works.")
+            return 0
+        print(f"\n--- sending a test email to {args.to} ---")
+        job = _fake_job(args.to)
+        try:
+            api_send(job, args.to)
+        except Exception as e:  # noqa: BLE001
+            body = getattr(e, "read", lambda: b"")().decode("utf-8", "replace")[:300]
+            print(f"FAIL — {type(e).__name__}: {e} {body}")
+            print("  A 400 here is usually EMAIL_FROM not being a verified sender:")
+            print("  add and confirm it under Brevo -> Senders.")
+            return 1
+        print(f"OK — accepted for delivery to {args.to}. Check the inbox (and spam).")
+        if not EMAIL_SEND_ENABLED:
+            print("\n  ! EMAIL_SEND_ENABLED is off, so the app itself is still only")
+            print("    simulating sends. Set it to 1 to let real mail go out.")
+        return 0
 
     if SMTP_USER == EMAIL_FROM and SMTP_HOST.endswith(("brevo.com", "sendinblue.com")):
         print("\n  ! SMTP_USER is the same as EMAIL_FROM. Brevo issues its own SMTP")

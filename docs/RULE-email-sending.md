@@ -11,6 +11,24 @@ the **Brevo SMTP relay**, configured entirely from environment variables in
 Railway. No credential is ever committed, and no default in the code points at a
 different provider.
 
+## Transport: the HTTP API, not SMTP
+
+**Railway blocks outbound SMTP on every port.** A perfectly correct SMTP setup
+times out there — port 587 and 465 both, with no error a person could act on.
+So the deployed app sends over **Brevo's HTTP API** (plain HTTPS on 443), which
+nothing blocks.
+
+Set `BREVO_API_KEY` to an API key from Brevo → SMTP & API → **API keys** tab
+(starts `xkeysib-`), and the SMTP variables are ignored entirely. Without it the
+app falls back to SMTP, which is what runs locally and on a host that permits it.
+
+`/api/mail-status` reports `"transport": "api"` or `"smtp"` so there is never a
+question about which path is carrying mail.
+
+⚠️ The **API key** (`xkeysib-`) and the **SMTP key** (`xsmtpsib-`) are different
+credentials on the same Brevo page and are not interchangeable in either
+direction — tested.
+
 ## The five variables
 
 Set in Railway → the service → Variables. All five, or nothing sends.

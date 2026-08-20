@@ -18,6 +18,8 @@ Pipeline:
 Reads the same sources as the app: the SQLite repo (registrations) and
 events.xlsx via src.catalog. Writes only inside data/email_campaign/.
 """
+import base64
+import json
 import os
 import smtplib
 import ssl
@@ -26,11 +28,14 @@ import time
 from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from email.utils import formataddr
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from openpyxl import Workbook, load_workbook
 
-from config import (CAMPAIGN_OUTBOX_XLSX, CAMPAIGN_SCHEDULE_XLSX, EMAIL_FROM,
+from config import (BREVO_API_KEY, BREVO_API_URL, CAMPAIGN_OUTBOX_XLSX,
+                    CAMPAIGN_SCHEDULE_XLSX, EMAIL_FROM,
                     EMAIL_FROM_NAME, EMAIL_OUT_DIR, EMAIL_REPLY_TO,
                     EMAIL_SEND_ENABLED, EMAIL_SEND_PAUSE, REMINDER_DAYS,
                     SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_SSL, SMTP_USER)
@@ -427,6 +432,17 @@ def _plain_text(job):
             "the seat can go to another dealer.\n")
 
 
+def transport():
+    """Which way mail goes out: "api" when a Brevo API key is set, else "smtp".
+
+    Not a preference — a deployment fact. Railway blocks outbound SMTP on every
+    port, so on the live host the API is the only transport that works at all.
+    SMTP stays supported because it is what runs locally and what a different
+    host would use.
+    """
+    return "api" if BREVO_API_KEY else "smtp"
+
+
 def missing_settings():
     """Which mail settings are unset, in the words the person setting them uses.
 
@@ -435,6 +451,10 @@ def missing_settings():
     inventing its own phrasing.
     """
     missing = []
+    if transport() == "api":
+        if not EMAIL_FROM:
+            missing.append("EMAIL_FROM")
+        return missing
     if not SMTP_HOST:
         missing.append("SMTP_HOST")
     if not SMTP_USER:
@@ -444,6 +464,57 @@ def missing_settings():
     if not EMAIL_FROM:
         missing.append("EMAIL_FROM")
     return missing
+
+
+def api_send(job, to):
+    """POST one email to Brevo's transactional endpoint. Raises on rejection.
+
+    Same three parts as the SMTP path — text, HTML, the .ics — so a dealer
+    cannot tell which transport carried their mail.
+    """
+    ics = ics_text(job["event"], job["view"], job["reg_id"]).encode("utf-8")
+    payload = {
+        "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM},
+        "to": [{"email": to}],
+        "replyTo": {"email": EMAIL_REPLY_TO},
+        "subject": job["subject"],
+        "textContent": _plain_text(job),
+        "htmlContent": render_email(job),
+        "attachment": [{"content": base64.b64encode(ics).decode("ascii"),
+                        "name": job["ics_name"]}],
+    }
+    req = Request(BREVO_API_URL, method="POST",
+                  data=json.dumps(payload).encode("utf-8"),
+                  headers={"api-key": BREVO_API_KEY, "content-type": "application/json",
+                           "accept": "application/json"})
+    with urlopen(req, timeout=30) as r:
+        return json.loads(r.read() or b"{}")
+
+
+def api_probe():
+    """Check the API key without sending. Returns a status string, never raises.
+
+    GET /v3/account is the cheapest authenticated call Brevo has, so this costs
+    no email credit and puts nothing in front of a dealer.
+    """
+    if not BREVO_API_KEY:
+        return "BREVO_API_KEY is not set"
+    req = Request("https://api.brevo.com/v3/account",
+                  headers={"api-key": BREVO_API_KEY, "accept": "application/json"})
+    try:
+        with urlopen(req, timeout=20) as r:
+            acct = json.loads(r.read() or b"{}")
+        who = acct.get("email") or acct.get("companyName") or "authenticated"
+        return f"OK — Brevo API key valid ({who})"
+    except HTTPError as e:
+        body = e.read().decode("utf-8", "replace")[:200]
+        if e.code == 401:
+            return ("FAILED — Brevo rejected the API key (401). BREVO_API_KEY must be "
+                    "an API key from Brevo -> SMTP & API -> API keys, starting "
+                    f"xkeysib-, not the SMTP key. {body}")
+        return f"FAILED — Brevo API returned {e.code}: {body}"
+    except URLError as e:
+        return f"FAILED — could not reach the Brevo API: {e.reason}"
 
 
 def smtp_connect():
@@ -522,15 +593,24 @@ def _deliver(job, conn=None):
         return "FAILED — registration has no contact email"
 
     try:
-        msg = _build(job, to)
-        if conn is not None:
-            conn.send_message(msg)
+        if transport() == "api":
+            api_send(job, to)
+        elif conn is not None:
+            conn.send_message(_build(job, to))
         else:
             with smtp_connect() as s:
-                s.send_message(msg)
+                s.send_message(_build(job, to))
         if EMAIL_SEND_PAUSE > 0:
             time.sleep(EMAIL_SEND_PAUSE)     # stay under the relay's burst limits
         return f"SENT to {to}"
+    except HTTPError as e:
+        # Brevo says why in the body, and that sentence is the whole diagnosis:
+        # a bad key, an unverified sender and a malformed address all arrive
+        # here as a 400-class code that means nothing on its own.
+        body = e.read().decode("utf-8", "replace")[:300]
+        return f"FAILED — Brevo API {e.code}: {body}"
+    except URLError as e:
+        return f"FAILED — could not reach the Brevo API: {e.reason}"
     except smtplib.SMTPAuthenticationError as e:
         return _auth_hint(e)
     except smtplib.SMTPSenderRefused as e:
@@ -660,7 +740,7 @@ def send_jobs(jobs, today=None):
     # one error nobody can see.
     now = datetime.now().isoformat(timespec="seconds")
     conn = None
-    if EMAIL_SEND_ENABLED and not missing_settings():
+    if EMAIL_SEND_ENABLED and transport() == "smtp" and not missing_settings():
         try:
             conn = smtp_connect()
         except Exception:  # noqa: BLE001 - _deliver reports it per job
@@ -724,6 +804,10 @@ def mail_status(probe=False):
     info = {
         "send_enabled": EMAIL_SEND_ENABLED,
         "send_enabled_raw": repr(raw),          # catches "True "/"yes please"/typos
+        # Which of the two paths below is actually carrying mail. Everything
+        # after it describes the one that isn't, half the time.
+        "transport": transport(),
+        "brevo_api_key_set": bool(BREVO_API_KEY),
         "smtp_host": SMTP_HOST,
         "smtp_port": SMTP_PORT,
         # The login is shown in full, unlike the key. It is a username, not a
@@ -751,6 +835,8 @@ def mail_status(probe=False):
     if probe:
         if missing_settings():
             info["login_probe"] = f"not configured: {', '.join(missing_settings())}"
+        elif transport() == "api":
+            info["login_probe"] = api_probe()
         else:
             try:
                 smtp_connect().quit()

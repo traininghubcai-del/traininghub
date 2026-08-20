@@ -85,6 +85,14 @@ EMAIL_FROM_NAME = os.environ.get("EMAIL_FROM_NAME", "M&A Supply Training")
 #
 # Left as a default so no fallback can quietly point a Brevo key at the wrong
 # host: a mismatch here is the difference between "sent" and 535.
+# Brevo's HTTP API, and the reason it is the default transport rather than a
+# fallback: Railway blocks outbound SMTP on every port, so a correct SMTP setup
+# times out there with no error a person could act on. The API is plain HTTPS on
+# 443, which nothing blocks. Set BREVO_API_KEY to an API key ("xkeysib-...")
+# from Brevo -> SMTP & API -> API keys, and SMTP is not used at all.
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
+BREVO_API_URL = os.environ.get("BREVO_API_URL", "https://api.brevo.com/v3/smtp/email")
+
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp-relay.brevo.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 # No fallback to EMAIL_FROM on purpose. That default was right for Gmail, where
