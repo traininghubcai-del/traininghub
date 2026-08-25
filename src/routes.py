@@ -149,8 +149,12 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 from src.hub_modes import classes_overview
                 q = parse_qs(parsed.query)
+                # ?branch= scopes the table (FSR picks one branch; "" or ALL
+                # means the whole ledger). Filtering happens server-side so the
+                # browser is never handed rows it isn't showing.
                 result = classes_overview(self.repo, (q.get("mode") or ["admin"])[0].strip(),
-                                          (q.get("code") or [""])[0].strip())
+                                          (q.get("code") or [""])[0].strip(),
+                                          (q.get("branch") or [""])[0].strip())
                 self._send_json(result, 200 if result.get("ok") else 403)
             except Exception as e:  # noqa: BLE001
                 self._send_json({"ok": False, "error": f"Hub error: {e}"}, 500)
@@ -192,7 +196,16 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_error(500, f"Flier error: {e}")
         elif path == "/api/events":
             try:
-                self._send_json({"events": public_events()})
+                # env rides along on the feed every page already fetches, so the
+                # test banner can never be missing on the page that needed it
+                from config import HUB_ENV
+                from src.hub_modes import branch_options
+                # branch NAMES ride along on the feed every page already fetches.
+                # They are not secret — the dealer's own registration dropdown is
+                # built from the same list — and the FSR unlock needs them BEFORE
+                # a code has been entered, since it asks for the branch first.
+                self._send_json({"events": public_events(), "env": HUB_ENV,
+                                 "branches": [b["branch"] for b in branch_options()]})
             except Exception as e:  # noqa: BLE001
                 self._send_json({"error": f"Could not load events: {e}"}, 500)
         elif path == "/api/stats":
@@ -316,8 +329,11 @@ class Handler(BaseHTTPRequestHandler):
                                           mode, code)
                 elif post_path.endswith("/save-class"):
                     from src.hub_modes import save_class
+                    # allow_past_restore is the admin's explicit "yes, this
+                    # class really happened then" — see manage.update_class
                     result = save_class(self.repo, str(payload.get("event_id", "")).strip(),
-                                        mode, code, payload.get("fields") or {})
+                                        mode, code, payload.get("fields") or {},
+                                        bool(payload.get("allow_past_restore")))
                 else:
                     from src.hub_modes import save_grades
                     result = save_grades(self.repo, str(payload.get("event_id", "")).strip(),

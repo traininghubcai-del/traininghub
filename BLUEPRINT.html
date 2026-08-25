@@ -193,7 +193,8 @@
   <div class="note"><strong>Codes are verified on the server.</strong> The browser never holds the code list,
     and a locked lens is never <em>sent</em> the roster — unlocking is the server agreeing to release data,
     not the page revealing something it already had. Codes live in <code>data/hub_codes.json</code>;
-    all three are <code>MMMAAA</code> today.</div>
+    Admin is <code>CORP7000</code> and FSR is <code>MAA</code> — separate codes, checked per lens,
+    so neither one opens the other.</div>
 </section>
 
 <!-- ══════════════════════════════════════════════ -->
@@ -336,7 +337,7 @@
       <tr><td><code>registrations.db</code></td><td><strong>Source of truth for people.</strong> Tables: <code>registrations</code>, <code>registration_attendees</code> (grades), <code>companies</code>, <code>people</code>, <code>events</code> cache, <code>class_log</code>, <code>audit_log</code>.</td><td><span class="tag t-pub">Public</span> + <span class="tag t-fsr">FSR</span> + <span class="tag t-adm">Admin</span></td><td><strong>No — back this up</strong></td></tr>
       <tr><td><code>registrations.xlsx</code></td><td>Excel mirror of the DB in John's exact column order. Rewritten after every signup.</td><td><span class="tag t-sys">App</span></td><td>Yes — from DB</td></tr>
       <tr><td><code>class_address.json</code></td><td>Floating venue overrides, <code>{event_id: address}</code>. Empty = use the branch location. <em>Never</em> touches the catalog.</td><td><span class="tag t-adm">Admin</span></td><td>Delete = fall back</td></tr>
-      <tr><td><code>hub_codes.json</code></td><td>Per-lens access codes. Absent = all lenses use <code>MMMAAA</code>.</td><td><span class="tag t-src">Manual</span></td><td>Yes — defaults</td></tr>
+      <tr><td><code>hub_codes.json</code></td><td>Per-lens access codes. Absent = built-in defaults (Admin <code>CORP7000</code>, FSR <code>MAA</code>).</td><td><span class="tag t-src">Manual</span></td><td>Yes — defaults</td></tr>
       <tr><td><code>fliers/</code></td><td>One uploaded flier per class, named <code>&lt;event_id&gt;.&lt;ext&gt;</code>, plus <code>_index.json</code> holding original filename, size, date.</td><td><span class="tag t-adm">Admin</span></td><td>No — re-upload</td></tr>
       <tr><td><code>email_campaign/outbox.xlsx</code></td><td><strong>The reminder ledger.</strong> One row per letter. Drives the "reminders sent" and "last reminder" columns. One reminder = one <em>day</em>.</td><td><span class="tag t-adm">Admin</span> + <span class="tag t-sys">Campaign</span></td><td>No — history</td></tr>
       <tr><td><code>email_campaign/campaign_schedule.xlsx</code>, <code>emails/</code></td><td>Planned 7/3/1-day sends and generated HTML bodies</td><td><span class="tag t-sys">Campaign</span></td><td>Yes</td></tr>

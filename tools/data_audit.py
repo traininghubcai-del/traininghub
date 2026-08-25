@@ -10,6 +10,7 @@ asserts the invariants the app actually depends on, and prints what broke.
 Exit code 0 = clean, 1 = at least one FAIL. Safe to run any time: reads only.
 """
 import json
+import os
 import sqlite3
 import sys
 from collections import Counter, defaultdict
@@ -19,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import CAMPAIGN_OUTBOX_XLSX, DB_PATH, EVENTS_XLSX, REG_XLSX  # noqa: E402
-from src.catalog import is_active, load_catalog, public_events  # noqa: E402
+from src.catalog import is_active, list_events, load_catalog, public_events  # noqa: E402
 
 FAILS, WARNS = [], []
 
@@ -33,6 +34,21 @@ def check(ok, label, detail="", warn_only=False):
     else:
         FAILS.append(f"{label} — {detail}")
         print(f"  FAIL  {label}  {detail}")
+
+
+def note(t):
+    print(f"  SKIP  {t}")
+
+
+def _admin_code():
+    """The Admin code the server is actually using, so the audit never hardcodes it."""
+    from src.hub_modes import DEFAULT_CODE, STORE
+    if STORE.exists():
+        try:
+            return str(json.loads(STORE.read_text() or "{}").get("admin") or DEFAULT_CODE)
+        except (ValueError, OSError):
+            pass
+    return DEFAULT_CODE
 
 
 def head(t):
@@ -203,8 +219,10 @@ def audit_server():
     import urllib.error
     import urllib.request
 
+    base = f"http://127.0.0.1:{os.environ.get('PORT', '8080')}"
+
     def get(path):
-        with urllib.request.urlopen("http://127.0.0.1:8000" + path, timeout=5) as r:
+        with urllib.request.urlopen(base + path, timeout=5) as r:
             return r.status, json.loads(r.read().decode())
 
     try:
@@ -219,14 +237,39 @@ def audit_server():
              if e["time_display"] != "Time TBD" and not e["time_display"].rstrip()[-3:].isupper()]
     check(not no_tz, "every public time shows its timezone label", no_tz[:5])
 
-    past = [e["event_id"] for e in evs if e["event_date"] < str(datetime.now().date())]
+    today = str(datetime.now().date())
+    past = [e["event_id"] for e in evs if e["event_date"] < today]
     check(not past, "public list hides past classes", past[:5])
+
+    # ...and the admin overview must NOT hide them: /admin is gone, so the
+    # master list under ADMIN-VIEW is the only route to a finished class, and
+    # an FSR who can't reach it can't grade it.
+    all_ev = list_events(include_past=True)
+    check(len(all_ev) >= len(evs), "admin catalog is a superset of the public one",
+          f"{len(all_ev)} all vs {len(evs)} public")
+    catalog_past = [e["event_id"] for e in all_ev if e["event_date"] < today]
+    if catalog_past:
+        code = _admin_code()
+        try:
+            _, ov = get(f"/api/hub/classes?mode=admin&code={code}")
+            ids = {c.get("event_id") for c in ov.get("classes", [])}
+            missing = [e for e in catalog_past if e not in ids]
+            check(ov.get("ok") and not missing,
+                  "admin overview includes past classes for grading",
+                  missing[:5] or ov.get("error", ""))
+            row = next((c for c in ov.get("classes", []) if c.get("event_id") in catalog_past), None)
+            check(bool(row and row.get("topic") and row.get("date_short")),
+                  "admin overview rows carry the display fields the list renders")
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+            check(False, "admin overview includes past classes for grading", str(e))
+    else:
+        note("no past classes in the catalog yet — admin past-class check skipped")
 
     # the gate that matters: locked modes must not leak the roster
     for mode in ("admin", "fsr"):
         try:
             urllib.request.urlopen(
-                f"http://127.0.0.1:8000/api/hub/class?event_id={evs[0]['event_id']}&mode={mode}",
+                f"{base}/api/hub/class?event_id={evs[0]['event_id']}&mode={mode}",
                 timeout=5)
             check(False, f"{mode} mode is locked without a code", "returned 200")
         except urllib.error.HTTPError as e:

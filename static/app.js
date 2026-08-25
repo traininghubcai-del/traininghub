@@ -20,6 +20,86 @@ function showGate(html) {
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
   "August", "September", "October", "November", "December"];
 
+// ---------- schedule guard (browser side) ----------
+// The server is the authority — src/class_schedule.py refuses these writes no
+// matter what the browser sends. These mirror it so the mistake is caught while
+// the admin is still looking at the field, using the IDENTICAL wording.
+const ERR_PAST_DATE = "Can't set the class date to a day that already passed.";
+const ERR_BAD_DATE = "Date must be YYYY-MM-DD.";
+const ERR_END_BEFORE_START = "End time must be after start time.";
+// Mirrors src/hub_modes.GRADE_IS_FSR_ONLY. The server refuses an admin grade
+// write outright; this is only so the refusal is legible before the click.
+const GRADE_FSR_ONLY = "Start from FSR-VIEW to grade class";
+
+// ---------- the Admin/FSR type filter ----------
+// Buttons, not a dropdown. Each one tests the COMPUTED status coming off
+// src/class_status.py, so the strip filters on what is true today rather than
+// on anything stored. BAD DATE is deliberately last and only appears when
+// there is at least one — it is an exception, not a category, and a chip
+// reading "Bad date 0" every day would train people to ignore it.
+const TYPE_FILTERS = [
+  { key: "",          label: "All classes",   test: () => true },
+  { key: "live",      label: "Coming up",     test: (e) => e.lifecycle === "live" },
+  { key: "needs",     label: "Needs grading", test: (e) => e.fsr_audit === "needs grading" },
+  { key: "graded",    label: "Graded",        test: (e) => e.status === "GRADED" },
+  { key: "nosignups", label: "No signups",    test: (e) => e.status === "NO SIGNUPS" },
+  { key: "erased",    label: "Erased",        test: (e) => e.status === "ERASED" },
+  { key: "baddate",   label: "Bad date",      test: (e) => e.status === "BAD DATE",
+    onlyIfAny: true },
+];
+
+let TYPE_FILTER = "";        // "" = All classes
+
+// Filters whose rows are all in the past. Only these flip to newest-first;
+// everything else — All classes included — stays chronological ascending.
+const PAST_ONLY_FILTERS = new Set(["needs", "graded", "nosignups"]);
+
+function chipTest(key) {
+  const f = TYPE_FILTERS.find((x) => x.key === key);
+  return f ? f.test : () => true;
+}
+
+// Counts come from the rows that survive every OTHER filter, so each button
+// tells you what you would actually get, not what the unfiltered feed holds.
+function drawChips(box, rows) {
+  const html = TYPE_FILTERS.map((f) => {
+    const n = rows.filter(f.test).length;
+    if (f.onlyIfAny && !n && TYPE_FILTER !== f.key) return "";
+    const on = TYPE_FILTER === f.key;
+    return `<button type="button" class="ma-chip${on ? " is-on" : ""}${
+      f.key === "baddate" ? " is-alarm" : ""}${!n ? " is-empty" : ""}"
+      data-chip="${f.key}" aria-pressed="${on}">${escHtml(f.label)}<i>${n}</i></button>`;
+  }).join("");
+  if (box.dataset.html === html) return;      // don't blow away focus on retype
+  box.dataset.html = html;
+  box.innerHTML = html;
+  box.querySelectorAll("[data-chip]").forEach((b) => {
+    b.onclick = () => {
+      TYPE_FILTER = b.dataset.chip;
+      if (listRender) listRender();
+    };
+  });
+}
+
+// The device's LOCAL calendar day. Never toISOString() — that is UTC, and a
+// Central-time admin working after 6pm would be handed tomorrow's date and
+// told today is already past.
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Error string for a proposed date/time slot, or "" when it's legal.
+// Blank times stay legal — a class with no time yet shows "Time TBD".
+function scheduleError(dateStr, start, end) {
+  const d = String(dateStr || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ERR_BAD_DATE;
+  if (d < todayISO()) return ERR_PAST_DATE;
+  const s = String(start || "").trim(), e = String(end || "").trim();
+  if (s && e && e <= s) return ERR_END_BEFORE_START;
+  return "";
+}
+
 // One definition of a class's display location — used by the index rows, the
 // hover card and the Location filter, so the dropdown can never drift from the
 // column it filters.
@@ -33,6 +113,10 @@ async function showIndex(intro) {
   try {
     const res = await fetch("/api/events");
     const data = await res.json();
+    showEnvBanner(data.env);
+    // branch names ride along on the public feed, so the FSR dialog can ask
+    // "which branch?" before any code exists
+    FSR_BRANCHES = data.branches || FSR_BRANCHES;
     const events = (data.events || []).slice()
       .sort((a, b) => (a.event_date || "").localeCompare(b.event_date || ""));
 
@@ -77,8 +161,15 @@ async function showIndex(intro) {
            <input id="reg-q" class="ma-reg-search" type="search" placeholder="Search class, location or FSR…" autocomplete="off" aria-label="Search classes" />
            <select id="reg-loc" class="ma-reg-month" aria-label="Filter by location">${locOpts}</select>
            <select id="reg-m" class="ma-reg-month" aria-label="Filter by month">${monthOpts}</select>
+
            <span class="ma-reg-count" id="reg-count"></span>
          </div>
+         <!-- Type filter. Buttons, not a dropdown: the whole point is to SEE
+              at a glance how much of each kind there is, and a collapsed
+              select hides both the options and their counts. -->
+         <div class="ma-chips" id="reg-filters" role="group"
+              aria-label="Filter classes by type" hidden></div>
+         <p class="ma-reg-msg" id="reg-msg" hidden></p>
          <div class="ma-reg-scroll" id="reg-scroll">
            <div class="ma-reg-heads" id="reg-heads">
              <span>Date</span><span>Class</span><span>Time</span><span>FSR</span><span>Location</span>
@@ -97,48 +188,172 @@ async function showIndex(intro) {
     const q = document.getElementById("reg-q");
     const mSel = document.getElementById("reg-m");
     const locSel = document.getElementById("reg-loc");
+    const chipBox = document.getElementById("reg-filters");
     const printBtn = document.getElementById("print-pack");
 
+    // Both restricted lenses render from /api/hub/classes, NOT /api/events. The
+    // public feed stops at today by design, and finished + cancelled classes are
+    // exactly what these two views exist to show.
+    //
+    // Order comes from the SERVER, already ranked by the status vocabulary:
+    // TODAY, TOMORROW, OPEN (soonest first), then NOT-GRADED, GRADED,
+    // NO SIGNUPS, ERASED (newest first). What needs doing floats up; the
+    // archive sinks. Re-sorting here would just be a second opinion.
+    const adminEvents = () => ADMIN_LIST.filter((c) => c && c.event_id && c.topic);
+    // FSR is no longer a needs-grading-only queue. It is the same ledger scoped
+    // to ONE branch, so an FSR sees their whole branch — what's coming, what
+    // they owe a grade on, and what's already settled.
+    const fsrEvents = () => FSR_LIST.filter((c) => c && c.event_id && c.topic);
+
+    const sourceEvents = () => {
+      if (FSR_ON && FSR_LIST.length) return fsrEvents();
+      if (ADMIN_ON && ADMIN_LIST.length) return adminEvents();
+      return events;
+    };
+
+    // The month and location dropdowns are built from whatever is on screen, so
+    // switching the lens on has to widen them — otherwise a past class is in
+    // the list but its month isn't offered. Keeps the current pick if it survives.
+    const refreshOptions = (src) => {
+      const keep = (sel, opts) => {
+        const was = sel.value;
+        sel.innerHTML = opts;
+        sel.value = [...sel.options].some((o) => o.value === was) ? was : "";
+      };
+      const ms = [], msSeen = new Set();
+      src.forEach((e) => {
+        const k = (e.event_date || "").slice(0, 7);
+        if (k && !msSeen.has(k)) { msSeen.add(k); ms.push(k); }
+      });
+      ms.sort();
+      keep(mSel, ['<option value="">All dates</option>'].concat(ms.map((k) => {
+        const [y, m] = k.split("-");
+        return `<option value="${k}">${MONTH_NAMES[+m - 1]} ${y}</option>`;
+      })).join(""));
+      const ls = [], lsSeen = new Set();
+      src.forEach((e) => {
+        const k = locLabel(e);
+        if (k && !lsSeen.has(k)) { lsSeen.add(k); ls.push(k); }
+      });
+      ls.sort((a, b) => a.localeCompare(b));
+      keep(locSel, ['<option value="">All locations</option>'].concat(
+        ls.map((k) => `<option value="${escHtml(k)}">${escHtml(k)}</option>`)).join(""));
+    };
+
+    // The status pill. The label and its css class are both computed server-side
+    // (src/class_status.py) so this can never invent a seventh vocabulary.
+    // A closed class is signalled with a ring, not extra words: the column is
+    // sized for the longest label ("NO SIGNUPS") and " · locked" clipped it.
+    const statePill = (e) =>
+      `<span class="rr-state ${e.status_css || ""}${e.closed_at ? " is-locked" : ""}"${
+        e.closed_at ? ` title="Closed ${escHtml(e.closed_at)} — grades are final"` : ""
+      }>${escHtml(e.status || "")}</span>`;
+
+    // The FSR-Audit column. Same truth as the status pill, flattened to the
+    // only three answers an auditor asks. Under ADMIN it is deliberately inert
+    // — an admin can see that a grade is owed, and cannot write one.
+    const auditCell = (e) => {
+      const owed = e.fsr_audit === "needs grading";
+      return `<span class="rr-audit ${e.fsr_audit_css || ""}${
+        owed && ADMIN_ON ? " is-blocked" : ""}"${
+        owed && ADMIN_ON ? ` title="${GRADE_FSR_ONLY}"` : ""
+      }>${escHtml(e.fsr_audit || "NA")}</span>`;
+    };
+
+    // ONE row layout for both restricted lenses. Admin and FSR are looking at
+    // the same ledger through the same table — same columns, same cell
+    // positions, same header. The ONLY thing that differs is the action at the
+    // end of the row, because that is the only thing the two roles do
+    // differently. (The public list keeps its narrower, quieter row.)
     const rowHTML = (e) => {
       const loc = locLabel(e);
-      const a = ADMIN_ROWS[e.event_id];
-      // ADMIN-VIEW adds the operational numbers the public list hides
-      const adminCells = a
+      // under either restricted lens the row IS a classes_overview record, so
+      // it already carries status/registered/reminders — no second lookup
+      const a = (ADMIN_ON || FSR_ON) ? (e.status ? e : ADMIN_ROWS[e.event_id]) : null;
+      const opCells = a
         ? `<span class="rr-reg" title="${a.registered} registered of ${a.capacity || "no cap"}">` +
             `<b>${a.registered}</b>${a.capacity ? `<i>/${a.capacity}</i>` : ""}</span>` +
-          `<span class="rr-state ${a.closed_at ? "is-closed" : a.grading}">${
-            a.closed_at ? "Closed" :
-            a.grading === "graded" ? "Graded" :
-            a.grading === "needs_grading" ? "Needs grading" :
-            a.timing === "today" ? "Today" : "Open"}</span>` +
+          statePill(a) +
+          auditCell(a) +
           `<span class="rr-rem ${a.reminders_sent ? "has" : ""}" title="${
             a.reminders_sent
               ? `${a.reminders_sent} reminder(s) sent` +
-                (a.reminder_stages.length ? ` — ${a.reminder_stages.join("/")}-day` : "") +
+                ((a.reminder_stages || []).length ? ` — ${a.reminder_stages.join("/")}-day` : "") +
                 `, last on ${a.last_reminder}`
               : "No reminders sent yet"}">${a.last_reminder || "&mdash;"}</span>` +
           `<span class="rr-remn ${a.reminders_sent ? "has" : ""}">${a.reminders_sent || "0"}</span>`
         : "";
+
+      const cells =
+        `<span class="rr-date">${escHtml(e.date_short)}</span>
+         <span class="rr-name">${escHtml(e.topic)}</span>
+         <span class="rr-time">${escHtml(e.time_display)}</span>
+         <span class="rr-fsr">${escHtml(e.trainer) || "FSR TBD"}</span>
+         <span class="rr-loc">${escHtml(loc)}</span>
+         ${opCells}`;
+
+      // The green CTA appears only under FSR. Admin sees the same "needs
+      // grading" in the audit column and gets "Open →" — they can edit the
+      // class, they cannot grade it. The server refuses either way.
+      const needs = FSR_ON && a && a.fsr_audit === "needs grading";
+      // A cancelled class is listed so nobody wonders where it went, but an FSR
+      // cannot open one: the server refuses to hand a cancelled roster to any
+      // mode but admin. So under FSR it is a row, not a destination.
+      if (FSR_ON && a && a.status === "ERASED") {
+        return `<div class="ma-reg-row is-erased" data-id="${esc(e.event_id)}">
+                  ${cells}<span class="rr-go is-dead">Cancelled</span></div>`;
+      }
+      const left = a ? (a.registered || 0) - (a.graded_count || 0) : 0;
       // no title="" — the native tooltip is slow, unstyled and truncates too.
       // data-id drives the hover card built in initRowCards().
       return (
-        `<a class="ma-reg-row" href="/?event=${esc(e.event_id)}" data-id="${esc(e.event_id)}">
-           <span class="rr-date">${escHtml(e.date_short)}</span>
-           <span class="rr-name">${escHtml(e.topic)}</span>
-           <span class="rr-time">${escHtml(e.time_display)}</span>
-           <span class="rr-fsr">${escHtml(e.trainer) || "FSR TBD"}</span>
-           <span class="rr-loc">${escHtml(loc)}</span>
-           ${adminCells}
-           <span class="rr-go">${ADMIN_ON ? "Open →" : "Register →"}</span>
+        `<a class="ma-reg-row" data-id="${esc(e.event_id)}"
+            href="/?event=${esc(e.event_id)}${needs ? "&view=fsr" : ""}">
+           ${cells}
+           <span class="${needs ? "rr-grade" : "rr-go"}"${needs
+             ? ` title="${left} student${left === 1 ? "" : "s"} still ungraded"` : ""}>${
+             needs ? "Grade this class &rarr;"
+                   : (ADMIN_ON || FSR_ON) ? "Open &rarr;" : "Register &rarr;"}</span>
          </a>`
       );
     };
 
+    // Clicking the "needs grading" chip under ADMIN says why, and goes nowhere.
+    // Delegated, because rows are rebuilt on every render.
+    let msgTimer = null;
+    const sayFsrOnly = () => {
+      const el = document.getElementById("reg-msg");
+      if (!el) return;
+      el.textContent = GRADE_FSR_ONLY;
+      el.hidden = false;
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(() => { el.hidden = true; }, 4000);
+    };
+    list.addEventListener("click", (ev) => {
+      if (!ADMIN_ON) return;
+      const chip = ev.target.closest(".rr-audit.is-blocked, .rr-grade");
+      if (!chip) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      sayFsrOnly();
+    });
+
+    let lastLens = null;
     const render = () => {
+      const src = sourceEvents();
+      // rebuild the dropdowns only when the lens actually flips, so typing in
+      // the search box never yanks the month/location pick out from under you
+      const lens = FSR_ON ? "fsr" : (src !== events ? "admin" : "public");
+      const srcIsAdmin = lens !== "public";
+      if (lens !== lastLens) { refreshOptions(src); lastLens = lens; }
+
       const term = (q.value || "").trim().toLowerCase();
       const mk = mSel.value;
       const lk = locSel.value;
-      const shown = events.filter((e) => {
+      // Everything EXCEPT the type filter. The chip counts are computed from
+      // this, so each button says how many rows YOU would get right now —
+      // counts that ignored the search box would just be decoration.
+      const base = src.filter((e) => {
         if (lk && locLabel(e) !== lk) return false;
         if (mk && (e.event_date || "").slice(0, 7) !== mk) return false;
         if (term) {
@@ -147,11 +362,43 @@ async function showIndex(intro) {
         }
         return true;
       });
-      list.classList.toggle("is-admin", ADMIN_ON);
+      // Every filter tests the COMPUTED status, so a chip filters on today's
+      // truth — never on a stored flag. See src/class_status.py.
+      //
+      // The server hands rows back in strict date order, and "All classes"
+      // keeps exactly that: a schedule read forwards, with finished classes
+      // sitting on their own dates rather than shoved into a block at the
+      // bottom. The one exception is a filter that can ONLY contain finished
+      // classes — there, "most recent first" is what you came to read.
+      let shown = base.filter(chipTest(TYPE_FILTER));
+      if (PAST_ONLY_FILTERS.has(TYPE_FILTER)) {
+        shown = shown.slice().sort((a, b) =>
+          (b.event_date || "").localeCompare(a.event_date || ""));
+      }
+      if (chipBox) {
+        chipBox.hidden = !(ADMIN_ON || FSR_ON);
+        if (!chipBox.hidden) drawChips(chipBox, base);
+      }
+      // is-admin carries the GRID (identical for both lenses); is-fsr only
+      // recolours. Splitting them is what keeps the columns from drifting.
+      const regMsg = document.getElementById("reg-msg");
+      if (regMsg && !ADMIN_ON) regMsg.hidden = true;
+      list.classList.toggle("is-admin", ADMIN_ON || FSR_ON);
+      list.classList.toggle("is-fsr", FSR_ON);
       const heads = document.getElementById("reg-heads");
-      if (heads) heads.classList.toggle("is-admin", ADMIN_ON);
+      if (heads) {
+        heads.classList.toggle("is-admin", ADMIN_ON || FSR_ON);
+        heads.classList.toggle("is-fsr", FSR_ON);
+        // identical header under both lenses — same columns, same order
+        heads.innerHTML =
+          `<span>Date</span><span>Class</span><span>Time</span><span>FSR</span><span>Location</span>
+           <span>Reg.</span><span>Status</span><span>FSR-Audit</span>
+           <span>Last reminder</span><span>#</span><span>Action</span>`;
+      }
       const scroll = document.getElementById("reg-scroll");
-      if (scroll) scroll.classList.toggle("is-admin", ADMIN_ON);
+      // both lenses render the wide table, so both need the scroll affordance
+      if (scroll) scroll.classList.toggle("is-admin", ADMIN_ON || FSR_ON);
+      // ADD A CLASS is an Admin power; the grading queue must not offer it
       const addBox = document.getElementById("add-class-box");
       if (addBox) { addBox.hidden = !ADMIN_ON; if (ADMIN_ON) bindAddClass(); }
       if (!ADMIN_ON) {
@@ -160,15 +407,42 @@ async function showIndex(intro) {
       }
       // admin lens recolours the page: heading + every class name go orange
       document.body.classList.toggle("admin-lens", ADMIN_ON);
+      document.body.classList.toggle("fsr-lens", FSR_ON);
+      // the page is a dealer signup page by default; under FSR-VIEW it is a work
+      // queue, and "Register for a class" is the wrong instruction entirely
+      const title = document.querySelector(".ma-gate-title");
+      const lede = document.querySelector(".ma-gate-lede");
+      const metrics = document.getElementById("ma-metrics");
+      const owed = src.filter((e) => e.status === "NOT-GRADED").length;
+      if (title) title.textContent = FSR_ON
+        ? (FSR_BRANCH || "All branches") : (intro || "Register for a class");
+      if (lede) lede.textContent = FSR_ON
+        ? (owed
+            ? `${owed} finished ${owed === 1 ? "class is" : "classes are"} still waiting on a grade — ${
+                owed === 1 ? "it's" : "they're"} at the top.`
+            : "Nothing owed a grade here. Everything coming up, and everything already settled.")
+        : "Build elite technicians, protect your installs, and keep every dealer on the same playbook.";
+      if (metrics) metrics.hidden = FSR_ON;
+      // "nothing to grade" is a result, not a failed search — say so plainly
+      const emptyMsg = FSR_ON && !src.length
+        ? `No classes at ${escHtml(FSR_BRANCH || "any branch")} yet.`
+        : "No classes match — try a different search or date.";
       list.innerHTML = shown.length
         ? shown.map(rowHTML).join("")
-        : `<div class="ma-reg-empty">No classes match — try a different search or date.</div>`;
-      countEl.textContent = `${shown.length} ${shown.length === 1 ? "class" : "classes"}`;
+        : `<div class="ma-reg-empty">${emptyMsg}</div>`;
+      countEl.textContent = `${shown.length} ${shown.length === 1 ? "class" : "classes"}` +
+        (FSR_ON && owed ? ` \u00b7 ${owed} to grade` : "");
+      const publicIds = new Set(events.map((e) => e.event_id));
+      const printable = shown.filter((e) => publicIds.has(e.event_id));
 
       // Print follows the list: send the visible ids in their on-screen order so
       // the QR sheet is exactly what the user filtered/sorted down to.
-      if (printBtn) {
-        const n = shown.length;
+      if (printBtn) printBtn.hidden = FSR_ON;
+      if (printBtn && !FSR_ON) {
+        // The QR sheet is a dealer-facing handout, so it only ever carries
+        // classes the public feed would show — a past class printed on a wall
+        // is a link that can no longer be registered against.
+        const n = printable.length;
         const filtered = n !== events.length;
         if (n === 0) {
           printBtn.removeAttribute("href");
@@ -177,7 +451,7 @@ async function showIndex(intro) {
         } else {
           printBtn.classList.remove("is-disabled");
           printBtn.href = filtered
-            ? "/qr-pack?events=" + shown.map((e) => encodeURIComponent(e.event_id)).join(",")
+            ? "/qr-pack?events=" + printable.map((e) => encodeURIComponent(e.event_id)).join(",")
             : "/qr-pack";
           printBtn.textContent = filtered
             ? `Print ${n} QR code${n === 1 ? "" : "s"} (PDF)`
@@ -191,21 +465,40 @@ async function showIndex(intro) {
     locSel.addEventListener("change", render);
     listRender = render;
     render();
-    initRowCards(list, events);
+    // a getter, not the array: under ADMIN-VIEW the rows on screen include past
+    // classes that were never in the public feed, and they need cards too
+    initRowCards(list, sourceEvents);
     loadStats();
     bindAdminView();
+    bindFsrView();
     if (ADMIN_ON) loadAdminRows();   // survives a re-render within the session
+    if (FSR_ON) loadFsrRows(codeFor("fsr"), FSR_BRANCH);
   } catch (e) {
     showGate(`<div class="ma-gate-box"><h1 class="ma-gate-title">Couldn't load classes</h1><p class="ma-gate-text">${e.message} — is the server running?</p></div>`);
   }
+}
+
+// ---------- test-hub banner ----------
+// A staging hub is a pixel-perfect clone of the live one, and the mistake that
+// can't be undone is editing the wrong hub. So a non-production process says so
+// on every page, in a bar you have to scroll past, not a subtle badge.
+function showEnvBanner(env) {
+  if (!env || env === "production") return;
+  if (document.getElementById("ma-envbar")) return;
+  const bar = document.createElement("div");
+  bar.id = "ma-envbar";
+  bar.className = "ma-envbar";
+  bar.textContent = `${env.toUpperCase()} HUB — safe to break. Not the live site, and no email leaves this machine.`;
+  document.body.prepend(bar);
+  document.body.classList.add("has-envbar");
 }
 
 // ---------- class list hover card ----------
 // Rows are one line, so long class names get clipped. Hovering (or tabbing to)
 // a row opens a card with the FULL name and the details that don't fit —
 // trainer, venue, level, and the class description in full.
-function initRowCards(listEl, events) {
-  const byId = new Map(events.map((e) => [e.event_id, e]));
+function initRowCards(listEl, getEvents) {
+  const lookup = (id) => (getEvents() || []).find((e) => e.event_id === id);
 
   let card = document.getElementById("ma-rowcard");
   if (!card) {
@@ -233,7 +526,9 @@ function initRowCards(listEl, events) {
         `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>
       ${e.notes ? `<div class="rc-desc">${e.notes.split(/\n+/)
         .map((p) => `<p>${escHtml(p)}</p>`).join("")}</div>` : ""}
-      <p class="rc-go">Click to register</p>`;
+      <p class="rc-go">${FSR_ON
+        ? (e.status === "NOT-GRADED" ? "Click to grade this class" : "Click to open")
+        : ADMIN_ON ? "Click to open &mdash; edit, roster, grade" : "Click to register"}</p>`;
   };
 
   // Prefer above the row; flip below when there isn't room. Never let the card
@@ -255,7 +550,7 @@ function initRowCards(listEl, events) {
   };
 
   const open = (row) => {
-    const e = byId.get(row.dataset.id);
+    const e = lookup(decodeURIComponent(row.dataset.id));
     if (!e) return;
     current = row;
     card.innerHTML = build(e);
@@ -301,7 +596,7 @@ function bindAdminView() {
   btn.dataset.bound = "1";
   btn.onclick = async () => {
     if (ADMIN_ON) {                       // toggle back to the public list
-      ADMIN_ON = false; ADMIN_ROWS = {};
+      ADMIN_ON = false; ADMIN_ROWS = {}; ADMIN_LIST = []; TYPE_FILTER = "";
       btn.textContent = "ADMIN-VIEW";
       btn.classList.remove("is-on");
       if (listRender) listRender();
@@ -319,11 +614,202 @@ function bindAdminView() {
       return;
     }
     rememberCode("admin", code);
+    setFsrView(false);                    // alternatives, not layers
     ADMIN_ON = true;
     btn.textContent = "ADMIN-VIEW ON";
     btn.classList.add("is-on");
     if (listRender) listRender();
   };
+}
+
+// ---------- FSR: pick a branch, then unlock ----------
+// Branch FIRST, code second. Two reasons, both practical:
+//   - branch names are already public (the dealer registration dropdown is
+//     built from the same list), so asking first gives nothing away
+//   - a mistyped code then costs you nothing: the branch you picked is still
+//     sitting there when the error appears
+//
+// Clicking FSR again ALWAYS reopens the branch step — switching branch is the
+// common case. The code step is skipped once the code is proven this session.
+// Leaving is a separate ✕, so "switch branch" and "get me out" are never the
+// same click.
+function bindFsrView() {
+  const btn = document.getElementById("fsr-view-btn");
+  const exit = document.getElementById("fsr-exit-btn");
+  const dlg = document.getElementById("fsr-dialog");
+  if (!btn || !dlg || btn.dataset.bound) return;
+  btn.dataset.bound = "1";
+
+  const stepBranch = document.getElementById("fsr-step-branch");
+  const stepCode = document.getElementById("fsr-step-code");
+  const title = document.getElementById("fsr-dialog-title");
+  const stepLabel = document.getElementById("fsr-dialog-step");
+  const chosen = document.getElementById("fsr-chosen");
+  const codeInput = document.getElementById("fsr-code");
+  const codeErr = document.getElementById("fsr-code-err");
+  const sel = document.getElementById("fsr-branch");
+  const nextBtn = document.getElementById("fsr-branch-go");
+
+  // "__none__" is the placeholder, and it is NOT a choice — ALL branches is.
+  // Next stays disabled until they actually answer the question.
+  const picked = () => sel.value !== "__none__";
+  const branchName = () => (sel.value === "__none__" ? "" : sel.value);
+
+  const showStep = (which) => {
+    stepBranch.hidden = which !== "branch";
+    stepCode.hidden = which !== "code";
+    if (which === "branch") {
+      title.textContent = "Which branch do you cover?";
+      stepLabel.textContent = "step 1 of 2";
+      sel.focus();
+    } else {
+      title.textContent = "Enter your access code";
+      stepLabel.textContent = "step 2 of 2";
+      chosen.textContent = branchName() || "ALL branches";
+      codeErr.hidden = true;
+      codeInput.value = "";
+      codeInput.focus();
+    }
+  };
+
+  const close = () => { if (dlg.open) dlg.close(); };
+
+  // Turn the lens on with the branch already chosen. Only reached once the
+  // code has been verified server-side.
+  const finish = async (code) => {
+    FSR_BRANCH = branchName();
+    const ok = await loadFsrRows(code, FSR_BRANCH);
+    if (!ok) return false;
+    setAdminView(false);                       // alternatives, not layers
+    setFsrView(true);
+    close();
+    if (listRender) listRender();
+    return true;
+  };
+
+  btn.onclick = () => {
+    // The branch list is public and already on the page — no request, no gate,
+    // so step 1 opens instantly even before any code exists.
+    fillFsrBranches(FSR_BRANCHES);
+    sel.value = FSR_ON || FSR_BRANCH ? FSR_BRANCH : "__none__";
+    nextBtn.disabled = !picked();
+    showStep("branch");
+    if (!dlg.open) dlg.showModal();
+  };
+
+  sel.onchange = () => { nextBtn.disabled = !picked(); };
+
+  nextBtn.onclick = async () => {
+    if (!picked()) return;
+    const known = codeFor("fsr");
+    if (known && await finish(known)) return;  // proven this session — skip step 2
+    if (known) sessionStorage.removeItem("maHub:fsr");   // it stopped working
+    showStep("code");
+  };
+
+  document.getElementById("fsr-code-back").onclick = () => showStep("branch");
+
+  document.getElementById("fsr-code-go").onclick = async () => {
+    const code = (codeInput.value || "").trim();
+    if (!code) { codeErr.textContent = "Enter the code."; codeErr.hidden = false; return; }
+    codeErr.hidden = true;
+    // verified on the SERVER — the browser has never held the code list
+    let ok = false;
+    try {
+      const res = await fetch("/api/hub/unlock", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "fsr", code }),
+      });
+      ok = (await res.json()).ok === true;
+    } catch (e) { ok = false; }
+    if (!ok) {
+      codeErr.textContent = "That code doesn't open the FSR view.";
+      codeErr.hidden = false;
+      codeInput.select();
+      return;               // stay on step 2 — the chosen branch is untouched
+    }
+    rememberCode("fsr", code);
+    if (!await finish(code)) {
+      codeErr.textContent = "Couldn't load the classes. Try again.";
+      codeErr.hidden = false;
+    }
+  };
+
+  dlg.querySelectorAll("[data-fsr-cancel]").forEach((b) => { b.onclick = close; });
+  codeInput.onkeydown = (e) => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("fsr-code-go").click(); }
+  };
+  sel.onkeydown = (e) => {
+    if (e.key === "Enter" && picked()) { e.preventDefault(); nextBtn.click(); }
+  };
+  if (exit) exit.onclick = () => { setFsrView(false); if (listRender) listRender(); };
+}
+
+// Fill the branch picker from the whole catalog, keeping the current pick if
+// that branch still exists. The placeholder is rebuilt every time so "Next"
+// can stay disabled until the question is actually answered.
+function fillFsrBranches(branches) {
+  const sel = document.getElementById("fsr-branch");
+  if (!sel) return;
+  sel.innerHTML = ['<option value="__none__">Select\u2026</option>',
+                   '<option value="">ALL branches</option>'].concat(
+    (branches || []).map((b) => {
+      const name = typeof b === "string" ? b : b.branch;
+      return `<option value="${escHtml(name)}">${escHtml(name)}</option>`;
+    })).join("");
+}
+
+// Turn ADMIN-VIEW off (or on) from outside its own click handler.
+function setAdminView(on) {
+  if (ADMIN_ON === on) return;
+  ADMIN_ON = on;
+  if (!on) { ADMIN_ROWS = {}; ADMIN_LIST = []; TYPE_FILTER = ""; }
+  const btn = document.getElementById("admin-view-btn");
+  if (btn) {
+    btn.textContent = on ? "ADMIN-VIEW ON" : "ADMIN-VIEW";
+    btn.classList.toggle("is-on", on);
+  }
+}
+
+// The nav button says which branch you're in — the one thing you can't tell
+// from the list itself once you've scrolled. Kept separate from setFsrView
+// because switching branch changes the label WITHOUT changing the lens state.
+function paintFsrControl() {
+  const btn = document.getElementById("fsr-view-btn");
+  if (btn) {
+    btn.textContent = FSR_ON ? `FSR \u00b7 ${FSR_BRANCH || "ALL"}` : "FSR";
+    btn.title = FSR_ON ? "Switch branch" : "Open the FSR view";
+    btn.classList.toggle("is-on", FSR_ON);
+  }
+  const exit = document.getElementById("fsr-exit-btn");
+  if (exit) exit.hidden = !FSR_ON;
+}
+
+function setFsrView(on) {
+  if (FSR_ON === on) { paintFsrControl(); return; }
+  FSR_ON = on;
+  if (!on) { FSR_ROWS = {}; FSR_LIST = []; TYPE_FILTER = ""; }
+  paintFsrControl();
+}
+
+async function loadFsrRows(code, branch) {
+  try {
+    const res = await fetch("/api/hub/classes?mode=fsr&code=" +
+                            encodeURIComponent(code || codeFor("fsr")) +
+                            "&branch=" + encodeURIComponent(branch || ""));
+    const data = await res.json();
+    if (!data.ok) return false;
+    FSR_ROWS = {};
+    FSR_LIST = data.classes || [];        // server order: what needs doing first
+    FSR_LIST.forEach((c) => { FSR_ROWS[c.event_id] = c; });
+    // branches come from the WHOLE catalog, never from the filtered rows —
+    // otherwise picking one branch would empty the picker behind you
+    FSR_BRANCHES = data.branches || FSR_BRANCHES;
+    if (FSR_ON && listRender) listRender();
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 // ---------- ADD A CLASS ----------
@@ -375,7 +861,7 @@ function drawNewClassForm() {
       <div class="nc-field full"><label>Class name <span class="req">*</span></label>
         <input id="nc-topic" type="text" placeholder="e.g. HEAT PUMP DIAGNOSTICS" autocomplete="off" /></div>
       <div class="nc-field"><label>Date <span class="req">*</span></label>
-        <input id="nc-date" type="date" /></div>
+        <input id="nc-date" type="date" min="${todayISO()}" /></div>
       <div class="nc-field"><label>Capacity</label>
         <input id="nc-cap" type="number" min="1" value="20" /></div>
       <div class="nc-field"><label>Start</label><input id="nc-start" type="time" value="09:00" /></div>
@@ -439,6 +925,14 @@ async function createClass() {
     msg.className = "ma-panel-msg error";
     return;
   }
+  // Refuse before the confirm dialog, not after it — the server refuses the
+  // same thing anyway, this just saves a pointless "are you sure?".
+  const badSlot = scheduleError(date, val("nc-start"), val("nc-end"));
+  if (badSlot) {
+    msg.textContent = badSlot;
+    msg.className = "ma-panel-msg error";
+    return;
+  }
   if (!confirm(`Create "${topic}" at ${branch} on ${date}?` +
       (isNew ? `\n\n"${branch}" is a NEW branch — it will be added to the branch list so dealers can select it.` : ""))) return;
 
@@ -478,7 +972,8 @@ async function loadAdminRows(code) {
     const data = await res.json();
     if (!data.ok) return false;
     ADMIN_ROWS = {};
-    (data.classes || []).forEach((c) => { ADMIN_ROWS[c.event_id] = c; });
+    ADMIN_LIST = data.classes || [];      // server order: status-ranked
+    ADMIN_LIST.forEach((c) => { ADMIN_ROWS[c.event_id] = c; });
     BRANCH_OPTS = data.branches || [];
     if (ADMIN_ON && listRender) listRender();
     return true;
@@ -868,7 +1363,13 @@ const LOCK_SVG = '<svg class="ma-mode-lock-ico" viewBox="0 0 24 24" width="12" h
 const MODE_ORDER = ["user", "admin", "fsr"];
 
 let ADMIN_ON = false;      // ADMIN-VIEW active on the master class list
-let ADMIN_ROWS = {};       // event_id -> {registered, capacity, grading, ...}
+let ADMIN_ROWS = {};       // event_id -> row, for lookups from the public list
+let ADMIN_LIST = [];       // the same rows IN SERVER ORDER (status-ranked)
+let FSR_ON = false;        // FSR view active: one branch's whole ledger
+let FSR_ROWS = {};         // same shape, fetched with the FSR code
+let FSR_LIST = [];
+let FSR_BRANCH = "";       // "" = every branch
+let FSR_BRANCHES = [];     // the whole catalog's branches, for the picker
 let listRender = null;     // re-render hook for the class list
 
 let currentMode = "user";
@@ -1050,7 +1551,8 @@ function renderAdmin(d) {
     <div class="ma-admin-grid">
       ${ADMIN_FIELDS.map(([k, label, type]) =>
         `<div class="ma-field"><label>${label}</label>
-           <input data-af="${k}" type="${type}" value="${escHtml(e[k])}" /></div>`).join("")}
+           <input data-af="${k}" type="${type}"${k === "event_date" ? ` min="${todayISO()}"` : ""}
+                  value="${escHtml(e[k])}" /></div>`).join("")}
       <div class="ma-field full"><label>Branch <em>· from the tables</em></label>
         <select data-af="branch">${branchOpts}</select></div>
       <div class="ma-field full"><label>Class address <em>· floating, never edits the table</em></label>
@@ -1139,6 +1641,33 @@ function saveAdmin() {
     return;
   }
 
+  // Same refusal the server makes, made here so the admin sees it against the
+  // field instead of after typing their code into the confirm box. A date that
+  // is ALREADY past is fine to leave alone — only a date being MOVED into the
+  // past is refused, which is why this reads adminDiff() and not the raw value.
+  const dateChange = changes.find((c) => c.key === "event_date");
+  const el = (k) => document.querySelector(`#mode-admin [data-af="${k}"]`);
+  const nowStart = (el("start_time") || {}).value || "";
+  const nowEnd = (el("end_time") || {}).value || "";
+  // A past date is no longer a flat refusal: it is refused UNLESS the admin
+  // says this class really happened then. So only the unfixable problems stop
+  // us here; the past-date case opens the confirm box with a checkbox on it.
+  const movingToPast = dateChange && scheduleError(dateChange.to, "", "") === ERR_PAST_DATE;
+  const badSlot = dateChange
+    ? (movingToPast ? "" : scheduleError(dateChange.to, nowStart, nowEnd))
+    : (nowStart && nowEnd && nowEnd <= nowStart ? ERR_END_BEFORE_START : "");
+  if (badSlot) {
+    msg.textContent = badSlot;
+    msg.className = "ma-panel-msg error";
+    document.getElementById("admin-confirm").hidden = true;
+    return;
+  }
+  // ...and moving a FINISHED class forward needs to say what it costs, because
+  // the only way back is the checkbox above and an admin who doesn't know that
+  // has just made the move permanent.
+  const wasPast = dateChange && dateChange.from && dateChange.from < todayISO();
+  const movingToFuture = dateChange && !movingToPast;
+
   msg.textContent = "";
   const box = document.getElementById("admin-confirm");
   box.innerHTML = `
@@ -1152,6 +1681,14 @@ function saveAdmin() {
            <span class="to">${escHtml(c.to) || "(empty)"}</span></span>
        </div>`).join("")}
     </div>
+    ${wasPast && movingToFuture ? `<p class="ma-confirm-warn">
+      <b>This moves the class out of the archive.</b> Putting it back to a past
+      date later needs <em>Restore historical date</em> on this same box.</p>` : ""}
+    ${movingToPast ? `<label class="ma-confirm-restore">
+      <input type="checkbox" id="admin-restore" />
+      <span><b>Restore historical date.</b> Tick this to confirm the class really
+        happened on ${escHtml(dateChange.to)}. Without it a past date is refused.</span>
+      </label>` : ""}
     <label class="ma-confirm-label" for="admin-pw">Enter the Admin access code to apply these changes</label>
     <div class="ma-confirm-row">
       <input type="password" id="admin-pw" autocomplete="off" placeholder="Access code" />
@@ -1182,7 +1719,9 @@ async function applyAdmin(changes) {
   try {
     const res = await fetch("/api/hub/save-class", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event_id: flierEvent, mode: "admin", code, fields }),
+      body: JSON.stringify({ event_id: flierEvent, mode: "admin", code, fields,
+        // only ever true when the admin ticked the box on this same dialog
+        allow_past_restore: !!(document.getElementById("admin-restore") || {}).checked }),
     });
     const data = await res.json();
     if (!data.ok && data.need_code) {
@@ -1405,8 +1944,16 @@ function renderFSR(d) {
     ${gate ? `<p class="ma-gate-note">${gate}</p>` : ""}
 
     <h3 class="ma-panel-sub">${st.can_grade ? "Grade sheet" : "Roster"}</h3>
+    ${closed ? `<p class="ma-gate-note">This class is closed &mdash; grades are final.
+      Reopen it below to change anything.</p>` : ""}
+    ${st.can_grade && !closed ? `<div class="ma-bulk">
+      <span>Mark everyone:</span>
+      <button type="button" class="ma-bulk-btn" data-bulk="1">Here</button>
+      <button type="button" class="ma-bulk-btn" data-bulk="0">No-show</button>
+      <button type="button" class="ma-bulk-btn is-clear" data-bulk="">Clear</button>
+    </div>` : ""}
     ${roster.length
-      ? rosterTable(roster, st.can_grade)
+      ? rosterTable(roster, st.can_grade && !closed)
       : '<p class="ma-empty">Nobody is registered for this class yet.</p>'}
 
     ${st.can_grade ? `
@@ -1414,11 +1961,15 @@ function renderFSR(d) {
       <p class="ma-steps-title">Close out this class &mdash; 2 steps</p>
 
       <div class="ma-step">
-        <button type="button" class="btn btn-primary" id="fsr-save"${locked ? " disabled" : ""}>
-          ${locked ? "Class info submitted \u2014 locked" : "1. Submit class info"}</button>
-        <p class="ma-step-note" id="fsr-save-note">${locked
+        <button type="button" class="btn btn-primary" id="fsr-save"${
+          (locked || closed) ? " disabled" : ""}>
+          ${closed ? "Closed \u2014 reopen to edit"
+            : locked ? "Class info submitted \u2014 locked" : "1. Submit class info"}</button>
+        <p class="ma-step-note" id="fsr-save-note">${closed
+          ? "The class is closed. Reopen it to change a grade."
+          : locked
           ? "Attendance and grades are saved and locked. Change any grade below to re-submit."
-          : "Mark who attended, add pass/fail and scores, then submit."}</p>
+          : "Mark who was here, add pass/fail and scores, then submit."}</p>
       </div>
 
       <div class="ma-step">
@@ -1437,6 +1988,15 @@ function renderFSR(d) {
     </div>` : ""}`;
 
   if (st.can_grade) {
+    // Bulk marking is what a checkbox grid was really for — 18 students and
+    // two of them missing. It stays EXPLICIT: the trainer chooses "everyone
+    // here", it is never what happens by not choosing.
+    box.querySelectorAll("[data-bulk]").forEach((b) => {
+      b.onclick = () => {
+        box.querySelectorAll(".g-att").forEach((sel) => { sel.value = b.dataset.bulk; });
+        unlockResubmit();
+      };
+    });
     document.getElementById("fsr-save").onclick = saveGrades;
     const closeBtn = document.getElementById("fsr-close");
     if (closeBtn) closeBtn.onclick = closeClass;
@@ -1504,7 +2064,11 @@ function rosterTable(roster, gradable) {
         <td data-label="Student"><b>${escHtml(r.name)}</b>${r.role ? `<small>${escHtml(r.role)}</small>` : ""}</td>
         <td data-label="Company">${escHtml(r.company_name)}</td>
         <td data-label="Branch">${escHtml(r.branch)}</td>
-        <td data-label="Here?"><input type="checkbox" class="g-att" ${r.attended === 1 ? "checked" : ""} /></td>
+        <td data-label="Here?"><select class="g-att">
+          <option value=""${r.attended === null ? " selected" : ""}>&mdash;</option>
+          <option value="1"${r.attended === 1 ? " selected" : ""}>Here</option>
+          <option value="0"${r.attended === 0 ? " selected" : ""}>No-show</option>
+        </select></td>
         <td data-label="Pass/Fail">${pf(r.passed)}</td>
         <td data-label="Score"><input type="number" class="g-score" min="0" max="100" value="${r.score === null ? "" : r.score}" placeholder="&mdash;" /></td>
         <td data-label="Note"><input type="text" class="g-note" value="${escHtml(r.comment)}" placeholder="optional" /></td>
@@ -1527,16 +2091,29 @@ function resultTag(r) {
 
 async function saveGrades() {
   const rows = Array.from(document.querySelectorAll("#mode-fsr tr[data-aid]"));
+  // Attendance is a THREE-state choice — "—" / Here / No-show — not a checkbox.
+  // A checkbox has no way to say "I haven't decided": an untouched one reads
+  // false, which the server took as "absent", so opening a grade sheet and
+  // pressing Submit used to mark the whole class a no-show and report the
+  // class fully graded. "" means untouched and leaves the student ungraded.
   const grades = rows.map((tr) => {
     const pass = tr.querySelector(".g-pass");
     return {
       attendee_id: Number(tr.dataset.aid),
-      attended: tr.querySelector(".g-att").checked,
+      attended: tr.querySelector(".g-att").value,   // "" | "1" | "0"
       passed: pass && pass.value !== "" ? Number(pass.value) : null,
       score: tr.querySelector(".g-score").value,
       comment: tr.querySelector(".g-note").value,
     };
   });
+  // Nothing decided yet? Then there is nothing to submit, and saying so beats
+  // writing a sheet full of blanks and calling the class graded.
+  if (grades.length && grades.every((g) => g.attended === "")) {
+    const m = document.getElementById("fsr-msg");
+    m.textContent = "Mark who was here first — nobody has been marked yet.";
+    m.className = "ma-panel-msg error";
+    return;
+  }
   const msg = document.getElementById("fsr-msg");
   const btn = document.getElementById("fsr-save");
   btn.disabled = true; btn.textContent = "Saving\u2026"; msg.textContent = "";
@@ -1651,5 +2228,13 @@ if (!eventId) {
   // mode buttons are the way in, and two "admin" entry points read as a conflict.
   const av = document.getElementById("admin-view-btn");
   if (av) av.hidden = true;
-  loadEvent(eventId);
+  const fv = document.getElementById("fsr-view-btn");
+  if (fv) fv.hidden = true;
+  // ?view=fsr is how the grading queue hands a class over: land straight in the
+  // FSR lens instead of making them find the code prompt again. The code is
+  // still checked server-side — the parameter asks, it does not authorise.
+  const wanted = (new URLSearchParams(location.search).get("view") || "").trim().toLowerCase();
+  loadEvent(eventId).then(() => {
+    if (wanted === "fsr" || wanted === "admin") requestMode(wanted);
+  });
 }

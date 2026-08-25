@@ -18,6 +18,12 @@ STATIC = HERE / "static"
 # against a scratch copy instead of the real thing.
 DATA = Path(os.environ.get("APP_DATA_DIR") or (HERE / "data")).expanduser()
 
+# Which hub this process is. Anything other than "production" makes every page
+# wear a loud banner, because a staging copy is a pixel-perfect clone of the
+# real thing and the one unrecoverable mistake is editing the wrong one.
+HUB_ENV = (os.environ.get("HUB_ENV") or "production").strip().lower()
+IS_PRODUCTION = HUB_ENV == "production"
+
 # Which catalog to serve. Override for a temp test, e.g.
 #   EVENTS_XLSX=data/events_june_test.xlsx python3 server.py
 _env_events = os.environ.get("EVENTS_XLSX")

@@ -122,22 +122,56 @@ a { color: inherit; }
 /* ADMIN-VIEW: the operational columns, off by default.
    The admin table needs real room — the public list is a narrow reading column,
    this is a control surface. Widen the whole box and give CLASS the space. */
-body.admin-lens .ma-gate-box { max-width: min(1320px, 96vw); }
+body.admin-lens .ma-gate-box { max-width: min(1380px, 97vw); }
 
 .ma-reg-list.is-admin .ma-reg-row,
 .ma-reg-heads.is-admin {
   grid-template-columns:
-    58px                    /* date        */
-    minmax(190px, 1.7fr)    /* class  <- the point of the table */
-    120px                   /* time        */
-    minmax(96px, 0.8fr)     /* FSR         */
-    minmax(96px, 0.8fr)     /* location    */
-    58px                    /* registered  */
-    88px                    /* status      */
-    84px                    /* last remind */
-    30px                    /* count       */
-    62px;                   /* open        */
-  gap: 10px;
+    54px                    /* date        */
+    minmax(158px, 1.6fr)    /* class  <- the point of the table */
+    104px                   /* time        */
+    minmax(84px, 0.7fr)     /* FSR         */
+    minmax(88px, 0.7fr)     /* location    */
+    52px                    /* registered  */
+    90px                    /* status      */
+    88px                    /* FSR-Audit   */
+    72px                    /* last remind */
+    26px                    /* count       */
+    162px;                  /* action — never allowed to clip: it is the CTA */
+  gap: 8px;
+}
+/* The action column is pinned to the right edge. With 11 columns the table
+   scrolls sideways on a laptop, and the one cell that must never be the one
+   you have to go looking for is the CTA — an FSR's whole job on this screen is
+   "Grade this class". The gradient lets the row slide under it instead of
+   colliding with it. */
+/* position:sticky needs no clipping ancestor, and .ma-reg-list carries
+   overflow:hidden to round its corners. The wide table keeps square inner
+   corners so the pinned column can actually pin. */
+.ma-reg-list.is-admin { overflow: visible; }
+
+.ma-reg-list.is-admin .rr-go,
+.ma-reg-list.is-admin .rr-grade,
+.ma-reg-heads.is-admin span:last-child {
+  position: sticky; right: 0; z-index: 2;
+  padding-left: 16px; margin-right: -4px;
+}
+/* "Open →" is text, so it fades the row out from under itself... */
+.ma-reg-list.is-admin .rr-go {
+  background: linear-gradient(to left, #0f2540 78%, rgba(15,37,64,0));
+}
+.ma-reg-list.is-admin .ma-reg-row:hover .rr-go {
+  background: linear-gradient(to left, #16385c 78%, rgba(22,56,92,0));
+}
+/* ...but "Grade this class" is a BUTTON. It keeps its green and gets a shadow
+   on its left edge instead, so the row visibly passes behind it. */
+.ma-reg-list.is-admin .rr-grade {
+  background: #35c06f;
+  box-shadow: -10px 0 12px -6px rgba(9,26,46,.85);
+}
+.ma-reg-list.is-admin .ma-reg-row:hover .rr-grade { background: #7fe0a6; }
+.ma-reg-heads.is-admin span:last-child {
+  background: linear-gradient(to left, #0b1f38 78%, rgba(11,31,56,0));
 }
 /* every cell clips its own content — without this a long trainer name spills
    into the next column and the row reads as one run-on string */
@@ -153,9 +187,102 @@ body.admin-lens .ma-gate-box { max-width: min(1320px, 96vw); }
 .rr-state { font-family: var(--display); font-weight: 700; font-size: 0.6rem; letter-spacing: 0.04em;
   text-transform: uppercase; text-align: center; padding: 3px 4px; border-radius: 3px; white-space: nowrap;
   background: rgba(255,255,255,0.08); color: #9fb6cc; }
-.rr-state.needs_grading { background: rgba(224,169,43,0.22); color: #ffd479; }
-.rr-state.graded { background: rgba(31,138,76,0.24); color: #7fe0a6; }
-.rr-state.is-closed { background: rgba(255,255,255,0.16); color: #e6eef7; }
+
+/* The seven computed statuses (src/class_status.py). Three temperatures:
+   BLUE  = live, nothing owed        OPEN / TODAY / TOMORROW
+   AMBER = somebody owes work        NOT-GRADED
+   RED   = finished, closed, done    GRADED
+   GREY  = settled with nothing in it  NO SIGNUPS / ERASED
+   GRADED is red on purpose: it is the "this is finished, don't touch it"
+   signal, not a congratulation. Amber is the only colour that means DO SOMETHING. */
+.rr-state.st-open     { background: rgba(29,111,194,0.20);  color: #8dc4ff; }
+.rr-state.st-today    { background: rgba(29,111,194,0.42);  color: #eaf4ff; }
+.rr-state.st-tomorrow { background: rgba(29,111,194,0.28);  color: #b9dcff; }
+.rr-state.st-notgraded{ background: rgba(224,169,43,0.24);  color: #ffd479; }
+.rr-state.st-graded   { background: rgba(192,57,43,0.22);   color: #ff9f92; }
+.rr-state.st-nosignups{ background: rgba(255,255,255,0.07); color: #7f97ae; }
+.rr-state.st-erased   { background: rgba(255,255,255,0.05); color: #66798c;
+                        text-decoration: line-through; }
+/* closed by an FSR: grades are final. A ring, because the column is sized for
+   the longest label and any extra word clips. Hover gives the date. */
+.rr-state.is-locked   { box-shadow: inset 0 0 0 1.5px currentColor; }
+/* a class whose date cannot be read: loud on purpose, and sorted to the top */
+.rr-state.st-baddate  { background: rgba(192,57,43,0.55); color: #fff;
+                        box-shadow: inset 0 0 0 1.5px #ff9f92; }
+/* FSR-Audit: three values, one job — is a grade owed here. Amber is the only
+   one that means DO SOMETHING, matching the status pill's own grammar. */
+.rr-audit { font-family: var(--display); font-weight: 700; font-size: 0.58rem;
+  letter-spacing: 0.04em; text-transform: uppercase; text-align: center;
+  padding: 3px 5px; border-radius: var(--radius-pill); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.rr-audit.au-needed { background: rgba(224,169,43,0.18); color: #ffd479;
+  box-shadow: inset 0 0 0 1px rgba(255,212,121,.30); }
+.rr-audit.au-done   { background: rgba(31,138,76,0.18);  color: #7fe0a6; }
+.rr-audit.au-na     { background: transparent; color: #4b6076; }
+/* under ADMIN the "needs grading" chip is informational, not a doorway —
+   clicking it says so instead of going anywhere */
+.rr-audit.is-blocked { cursor: help; }
+
+/* ---- Admin/FSR type filter: a button strip, not a dropdown ----
+   A select collapses six answers into one line and hides the counts, which is
+   the opposite of what this control is for — you are meant to see at a glance
+   how much of each kind there is before you click anything. */
+.ma-chips { display: flex; flex-wrap: wrap; gap: 7px; margin: 0 0 12px; }
+.ma-chip {
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  font-family: var(--display); font-weight: 700; font-size: 0.7rem;
+  letter-spacing: .05em; text-transform: uppercase;
+  padding: 7px 13px; border-radius: var(--radius-pill);
+  border: 1.5px solid rgba(255,255,255,.18); background: transparent; color: #9fb6cc;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.ma-chip i { font-style: normal; font-size: 0.68rem; font-weight: 800;
+  padding: 1px 6px; border-radius: var(--radius-pill);
+  background: rgba(255,255,255,.10); color: #c7d8e8; }
+.ma-chip:hover { border-color: rgba(255,255,255,.42); color: #eaf4ff; }
+.ma-chip:focus-visible { outline: 2px solid #6fb0ee; outline-offset: 2px; }
+.ma-chip.is-empty { opacity: .45; }
+/* the active one is filled, not merely outlined — one glance says which */
+.ma-chip.is-on { background: #1d6fc2; border-color: #4d9bea; color: #fff; opacity: 1; }
+.ma-chip.is-on i { background: rgba(0,0,0,.26); color: #fff; }
+body.admin-lens .ma-chip.is-on { background: #d9822b; border-color: #e8a13a; }
+body.fsr-lens   .ma-chip.is-on { background: #1f8a4c; border-color: #35c06f; }
+/* a broken date is never a routine category — the chip only shows when there
+   is one, and it shows loudly */
+.ma-chip.is-alarm { border-color: rgba(255,159,146,.55); color: #ff9f92; opacity: 1; }
+/* beats the per-lens tints below it — a broken date is red in EVERY lens, it
+   is not an admin thing or an FSR thing */
+body .ma-chip.is-alarm.is-on,
+body.admin-lens .ma-chip.is-alarm.is-on,
+body.fsr-lens   .ma-chip.is-alarm.is-on { background: #c0392b; border-color: #ff9f92; color: #fff; }
+@media (max-width: 640px) { .ma-chip { font-size: 0.66rem; padding: 6px 10px; } }
+
+/* bulk attendance — explicit, never a default */
+.ma-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0 0 12px; font-size: 0.88rem; color: var(--muted); }
+.ma-bulk-btn { cursor: pointer; border: 1.5px solid #bfe3cc; background: #e9f6ee;
+  color: #157a42; border-radius: var(--radius-pill); padding: 5px 13px;
+  font-family: var(--display); font-weight: 700; font-size: 0.72rem;
+  letter-spacing: .05em; text-transform: uppercase; }
+.ma-bulk-btn:hover { background: #d3ecdd; }
+.ma-bulk-btn.is-clear { border-color: var(--line); background: transparent; color: var(--muted); }
+
+/* the confirm box's two date controls */
+.ma-confirm-warn { margin: 0 0 12px; padding: 10px 13px; border-left: 4px solid #d9822b;
+  background: #fdf3e6; color: #6b4a12; font-size: 0.9rem; border-radius: 0 4px 4px 0; }
+.ma-confirm-restore { display: flex; gap: 10px; align-items: flex-start;
+  margin: 0 0 14px; padding: 11px 13px; border: 1.5px solid #c0392b;
+  background: #fdecea; border-radius: 4px; font-size: 0.9rem; color: #7a2018;
+  cursor: pointer; }
+.ma-confirm-restore input { margin-top: 3px; flex: 0 0 auto; }
+
+/* the one line that explains why an admin click did nothing */
+.ma-reg-msg { margin: 0 0 8px; padding: 8px 12px; border-radius: var(--r-md);
+  background: rgba(224,169,43,0.14); color: #ffd479;
+  box-shadow: inset 0 0 0 1px rgba(255,212,121,.32);
+  font-family: var(--display); font-weight: 700; font-size: 0.72rem;
+  letter-spacing: .05em; text-transform: uppercase; text-align: center; }
+
 /* reminder history — reads the email campaign ledger */
 .rr-rem { font-size: 0.76rem; color: #56697a; white-space: nowrap; text-align: center; }
 .rr-rem.has { color: #c7d8e8; }
@@ -655,7 +782,7 @@ body.admin-lens .ma-reg-row .rr-go { color: #e8a13a; }
 
 /* one scroll container for heads + rows so the columns can never drift apart */
 .ma-reg-scroll.is-admin { overflow-x: auto; }
-.ma-reg-scroll.is-admin .ma-reg-heads, .ma-reg-scroll.is-admin .ma-reg-list { min-width: 1000px; }
+.ma-reg-scroll.is-admin .ma-reg-heads, .ma-reg-scroll.is-admin .ma-reg-list { min-width: 1110px; }
 
 /* ADD A CLASS form — inline on the master list, admin only */
 button.ma-addclass-link { background: none; cursor: pointer; }
@@ -921,12 +1048,10 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
        Two variants because the two scroll areas sit on opposite surfaces. --- */
 .ma-reg-scroll.is-admin, .ma-table-wrap{ position:relative; }
 
-/* dark surface (class list on the navy gate) */
-.ma-reg-scroll.is-admin::after{
-  content:""; position:absolute; top:0; right:0; bottom:0; width:38px;
-  pointer-events:none; z-index:3; border-radius:0 var(--r-md) var(--r-md) 0;
-  background:linear-gradient(to right, rgba(9,26,46,0), rgba(9,26,46,.72));
-}
+/* The class list's right-edge fade is GONE: the action column is pinned there
+   now (see .rr-go/.rr-grade sticky above), and a fade painted over the CTA is
+   worse than no hint at all. The pinned column is its own affordance — content
+   visibly slides under it. */
 /* light surface (roster / grade tables on white) */
 .ma-table-wrap::after{
   content:""; position:absolute; top:1px; right:1px; bottom:1px; width:34px;
@@ -934,7 +1059,7 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
   background:linear-gradient(to right, rgba(255,255,255,0), rgba(255,255,255,.94));
 }
 /* the fade is a hint that there's more — hide it once the table fits */
-@media (min-width:1340px){ .ma-reg-scroll.is-admin::after{ display:none; } }
+
 @media (max-width:600px){ .ma-table-wrap::after{ display:none; } }  /* card view: nothing to scroll */
 
 /* --- slim, on-brand scrollbars --- */
@@ -975,9 +1100,14 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
 .rr-state{ padding:4px 9px; font-size:.6rem; border-radius:var(--radius-pill); }
 .ma-pill.ok{ background:rgba(31,138,76,.12); color:#157a42; border-color:rgba(31,138,76,.32); }
 .ma-pill.no{ background:rgba(192,57,43,.10); color:#a5281c; border-color:rgba(192,57,43,.30); }
-.rr-state.graded{ background:rgba(31,138,76,.22); color:#7fe0a6; border-color:rgba(127,224,166,.34); }
-.rr-state.needs_grading{ background:rgba(224,169,43,.20); color:#ffd479; border-color:rgba(255,212,121,.34); }
-.rr-state.is-closed{ background:rgba(255,255,255,.14); color:#e6eef7; border-color:rgba(255,255,255,.22); }
+.rr-state.st-open{     background:rgba(29,111,194,.18); color:#8dc4ff; border-color:rgba(141,196,255,.30); }
+.rr-state.st-today{    background:rgba(29,111,194,.40); color:#eaf4ff; border-color:rgba(234,244,255,.40); }
+.rr-state.st-tomorrow{ background:rgba(29,111,194,.26); color:#b9dcff; border-color:rgba(185,220,255,.32); }
+.rr-state.st-notgraded{background:rgba(224,169,43,.20); color:#ffd479; border-color:rgba(255,212,121,.34); }
+.rr-state.st-graded{   background:rgba(192,57,43,.20);  color:#ff9f92; border-color:rgba(255,159,146,.34); }
+.rr-state.st-nosignups{background:rgba(255,255,255,.06);color:#7f97ae; border-color:rgba(255,255,255,.16); }
+.rr-state.st-erased{   background:rgba(255,255,255,.04);color:#66798c; border-color:rgba(255,255,255,.12);
+                       text-decoration:line-through; }
 
 /* --- blueprint grid behind the hero: reads as drafting paper, not decoration --- */
 .ma-hero-pattern{
@@ -1003,7 +1133,7 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
 }
 /* --- and when printing --- */
 @media print{
-  .ma-reg-scroll.is-admin::after, .ma-table-wrap::after{ display:none; }
+  .ma-table-wrap::after{ display:none; }
   .ma-reg-list .ma-reg-row, .ma-mode-panel{ opacity:1; transform:none; animation:none; }
 }
 
@@ -1189,3 +1319,106 @@ body.admin-lens .rr-go{ color:#e8a13a; }
   .ma-staff-gate{ position:relative; }
 }
 
+
+/* ---- test-hub banner ---------------------------------------------------- */
+/* Only ever rendered when HUB_ENV != production (see showEnvBanner). Sticky and
+   high-contrast on purpose: the failure it prevents is editing the live hub by
+   mistake, so it must survive scrolling and be impossible to read past. */
+.ma-envbar {
+  position: sticky; top: 0; z-index: 999;
+  background: repeating-linear-gradient(135deg, #b45309 0 14px, #92400e 14px 28px);
+  color: #fff; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  font-size: .78rem; text-align: center; padding: 9px 14px;
+  border-bottom: 2px solid #fbbf24;
+}
+
+/* ---- FSR-VIEW: the grading queue ---------------------------------------
+   Not the admin table with a filter on it. Five columns, ending in the only
+   action an FSR came for, so a row reads as one job rather than a record. */
+/* the FSR slot: the button (open / switch branch) and the only way out */
+.ma-nav-fsr { display: inline-flex; align-items: center; gap: 4px; }
+.ma-nav-fsr .ma-nav-cta { max-width: 230px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.ma-nav-exit {
+  border: none; cursor: pointer; background: #123; color: #9fb6cc;
+  font-size: 0.82rem; line-height: 1; padding: 10px 11px; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(127,224,166,.34);
+}
+.ma-nav-exit:hover { background: #1b3550; color: #fff; }
+.ma-nav-exit:focus-visible { outline: 2px solid #7fe0a6; outline-offset: 1px; }
+
+/* ---- the FSR unlock dialog: code, then branch --------------------------- */
+/* the global `* { margin: 0 }` reset kills the UA's `margin: auto` on an open
+   dialog, which is what centres it — so centre it explicitly. */
+.ma-dialog {
+  border: none; padding: 0; background: transparent;
+  max-width: 460px; width: 92vw;
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  max-height: 90vh; overflow: auto;
+}
+.ma-dialog::backdrop { background: rgba(6,18,32,.72); backdrop-filter: blur(3px); }
+.ma-dialog-card {
+  background: var(--white); border: 1px solid #bfe3cc; border-top: 4px solid #1f8a4c;
+  border-radius: var(--r-md); padding: 24px 26px 22px; text-align: left;
+}
+.ma-dialog-eyebrow { font-family: var(--display); font-weight: 700; font-size: 0.64rem;
+  letter-spacing: .14em; text-transform: uppercase; color: #1f8a4c; margin-bottom: 6px; }
+.ma-dialog-title { font-family: var(--display); font-weight: 800; font-size: 1.3rem;
+  color: var(--navy); margin-bottom: 10px; line-height: 1.2; }
+.ma-dialog-note { font-size: 0.9rem; color: var(--muted); margin-bottom: 16px; }
+.ma-dialog-label { display: block; font-family: var(--display); font-weight: 700;
+  font-size: 0.68rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px; }
+.ma-dialog-step input, .ma-dialog-step select {
+  width: 100%; padding: 11px 12px; border: 1.5px solid var(--line); border-radius: 4px;
+  font-family: var(--body); font-size: 0.98rem; background: var(--white); color: var(--navy);
+}
+.ma-dialog-step input:focus, .ma-dialog-step select:focus {
+  outline: none; border-color: #1f8a4c; box-shadow: 0 0 0 3px rgba(31,138,76,.16);
+}
+.ma-dialog-err { margin-top: 9px; font-size: 0.88rem; font-weight: 600; color: #a5281c; }
+.ma-dialog-hint { margin-top: 8px; font-size: 0.84rem; color: var(--muted); font-style: italic; }
+.ma-dialog-back { background: none; border: none; cursor: pointer; color: #1f8a4c;
+  font-family: var(--display); font-weight: 700; font-size: 0.78rem; letter-spacing: .03em;
+  padding: 6px; }
+.ma-dialog-back:hover { text-decoration: underline; }
+.btn.btn-fsr:disabled { background: #b6c6bd; border-color: #b6c6bd; cursor: not-allowed; }
+.ma-dialog-actions { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+.btn.btn-fsr { background: #1f8a4c; color: #fff; border-color: #1f8a4c; }
+.btn.btn-fsr:hover { background: #23a25a; border-color: #23a25a; }
+.ma-dialog-cancel { background: none; border: none; cursor: pointer; color: var(--muted);
+  font-family: var(--body); font-size: 0.92rem; text-decoration: underline; padding: 6px; }
+.ma-dialog-cancel:hover { color: var(--navy); }
+@media (max-width: 560px) {
+  .ma-dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+  .ma-dialog-actions > * { width: 100%; }
+}
+
+button.ma-nav-cta.is-fsr { background: #1f8a4c; margin-left: 8px; }
+button.ma-nav-cta.is-fsr:hover { background: #23a25a; }
+button.ma-nav-cta.is-fsr.is-on { background: #23a25a; box-shadow: inset 0 0 0 2px #7fe0a6; }
+
+body.fsr-lens .ma-gate-box { max-width: min(1380px, 97vw); }
+body.fsr-lens .ma-gate-title { color: #7fe0a6; }
+body.fsr-lens .ma-reg-list .rr-name { color: #7fe0a6; }
+
+/* FSR has NO grid of its own. Both lenses read the same ledger through the same
+   table, so they share one column set (.is-admin above) — only the action cell
+   and the row colours differ. A second grid here is exactly how the two views
+   would drift apart a month from now. */
+.rr-grade { font-family: var(--display); font-weight: 800; font-size: 0.72rem;
+  letter-spacing: .05em; text-transform: uppercase; text-align: center;
+  color: #04150c; background: #35c06f; border-radius: 3px; padding: 7px 10px; white-space: nowrap; }
+body.fsr-lens .ma-reg-row:hover { background: rgba(31,138,76,0.22); }
+body.fsr-lens .ma-reg-row:hover { box-shadow: inset 3px 0 0 #35c06f; }
+.ma-reg-row:hover .rr-grade { background: #7fe0a6; }
+/* a cancelled class is listed so nobody wonders where it went — but it is not
+   a destination, so it does not behave like a row you can click */
+.ma-reg-row.is-erased { opacity: 0.55; cursor: default; }
+.ma-reg-row.is-erased:hover { background: transparent; box-shadow: none; }
+.rr-go.is-dead { color: #66798c; font-style: italic; text-transform: none;
+  letter-spacing: 0; font-weight: 600; }
+
+/* On a narrow screen both lenses fall back to the same horizontal scroll the
+   admin table already uses (.ma-reg-scroll.is-admin), so there is nothing
+   FSR-specific to restack here. */

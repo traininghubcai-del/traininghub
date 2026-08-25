@@ -22,6 +22,13 @@
         <a href="#faq">FAQ</a>
         <a href="https://www.masupplycompany.com/" target="_blank" rel="noopener">Main Site ↗</a>
         <button type="button" class="ma-nav-cta" id="admin-view-btn">ADMIN-VIEW</button>
+        <!-- FSR opens a two-step dialog (code, then branch). The button never
+             jumps straight to a list; the ✕ beside it is the only way out. -->
+        <span class="ma-nav-fsr">
+          <button type="button" class="ma-nav-cta is-fsr" id="fsr-view-btn">FSR</button>
+          <button type="button" class="ma-nav-exit" id="fsr-exit-btn"
+                  title="Leave the FSR view" aria-label="Exit FSR view" hidden>&#10005;</button>
+        </span>
       </nav>
     </div>
   </header>
@@ -215,5 +222,42 @@
 
   <script src="/static/app.js?v=aug3j"></script>
   <script src="/static/chat.js"></script>
+  <!-- FSR unlock: BRANCH first, then code. Branch names are already public
+       (the dealer's own registration dropdown is built from the same list), so
+       asking which branch before asking for the code gives nothing away — and
+       it means a wrong code never costs you the branch you already picked. -->
+  <dialog class="ma-dialog" id="fsr-dialog" aria-labelledby="fsr-dialog-title">
+    <div class="ma-dialog-card">
+      <p class="ma-dialog-eyebrow">FSR view · <span id="fsr-dialog-step">step 1 of 2</span></p>
+      <h2 class="ma-dialog-title" id="fsr-dialog-title">Which branch do you cover?</h2>
+
+      <div class="ma-dialog-step" id="fsr-step-branch">
+        <label class="ma-dialog-label" for="fsr-branch">Branch</label>
+        <select id="fsr-branch">
+          <option value="__none__">Select…</option>
+          <option value="">ALL branches</option>
+        </select>
+        <p class="ma-dialog-hint">Try leave all branches if can't find class</p>
+        <div class="ma-dialog-actions">
+          <button type="button" class="btn btn-fsr" id="fsr-branch-go" disabled>Next</button>
+          <button type="button" class="ma-dialog-cancel" data-fsr-cancel>Cancel</button>
+        </div>
+      </div>
+
+      <div class="ma-dialog-step" id="fsr-step-code" hidden>
+        <p class="ma-dialog-note">Showing <b id="fsr-chosen">ALL branches</b>.
+          The FSR view carries rosters and grades, so it needs the code.</p>
+        <label class="ma-dialog-label" for="fsr-code">FSR access code</label>
+        <input type="password" id="fsr-code" autocomplete="off" inputmode="text"
+               placeholder="FSR access code" />
+        <p class="ma-dialog-err" id="fsr-code-err" hidden></p>
+        <div class="ma-dialog-actions">
+          <button type="button" class="btn btn-fsr" id="fsr-code-go">Show classes</button>
+          <button type="button" class="ma-dialog-back" id="fsr-code-back">&larr; Branch</button>
+          <button type="button" class="ma-dialog-cancel" data-fsr-cancel>Cancel</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
 </body>
 </html>

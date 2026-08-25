@@ -20,6 +20,8 @@ from openpyxl import load_workbook
 
 from config import EVENTS_XLSX, MONTHS
 from src.catalog import load_catalog, missing_info, time_display
+from src.class_schedule import (parse_event_date, refuse_bad_times, refuse_past_date,
+                               to_hhmm)
 
 # Several people can edit at once (two admins on two class pages, or an admin
 # while a tool runs). openpyxl rewrites the WHOLE workbook on save, so two
@@ -125,17 +127,36 @@ def _derive_weekday(iso):
         return ""
 
 
-def update_class(repo, event_id, fields):
+def has_grade_history(repo, event_id):
+    """True when anyone on this class has ever been graded.
+
+    This is what makes a past date legitimate: a class with grades on it
+    demonstrably happened, so restoring the day it happened on is a correction,
+    not a fabrication. A clean upcoming class has no such evidence.
+    """
+    try:
+        return any(r.get("attended") is not None for r in repo.class_grades(event_id))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def update_class(repo, event_id, fields, allow_past_restore=False):
     """Patch any subset of EDITABLE fields on one class. Returns {ok, message, class}.
+
+    allow_past_restore is the escape hatch for the one-way door: moving a
+    finished class forward is allowed (it fixes a typo), which used to mean the
+    move could never be undone, because putting the real date back is by
+    definition writing a past date. It is granted ONLY by an explicit admin
+    confirmation, or automatically when the class already carries grades.
 
     Serialised: concurrent admins editing the same (or any) class cannot
     interleave workbook writes.
     """
     with _CATALOG_LOCK:
-        return _update_class(repo, event_id, fields)
+        return _update_class(repo, event_id, fields, allow_past_restore)
 
 
-def _update_class(repo, event_id, fields):
+def _update_class(repo, event_id, fields, allow_past_restore=False):
     event_id = str(event_id).strip()
     if not event_id:
         return {"ok": False, "error": "Missing event_id."}
@@ -166,6 +187,44 @@ def _update_class(repo, event_id, fields):
         wb.close()
         return {"ok": False, "error": f"Class '{event_id}' not found."}
 
+    # ---- schedule guards -------------------------------------------------
+    # Run BEFORE a single cell is touched, so a refusal leaves the workbook and
+    # the file on disk exactly as they were. src.class_schedule owns the rules
+    # (and the same clock the past/upcoming split uses everywhere else).
+    if "event_date" in fields:
+        new_date = parse_event_date(fields["event_date"])
+        if not new_date:
+            wb.close()
+            return {"ok": False, "error": "Date must be YYYY-MM-DD."}
+        err = refuse_past_date(new_date)
+        if err:
+            # The two ways a past date is legitimate. Both mean "this class
+            # really happened then" rather than "I am backdating a live class".
+            restore = bool(allow_past_restore) or has_grade_history(repo, event_id)
+            if not restore:
+                wb.close()
+                return {"ok": False, "error": err,
+                        # tells the browser an escape hatch exists for this class
+                        "can_restore": False, "past_date": True}
+            from src.audit import log
+            log("admin", "class.restore_past_date", event_id,
+                {"to": new_date.isoformat(),
+                 "reason": "explicit" if allow_past_restore else "has grade history"})
+        fields["event_date"] = new_date.isoformat()      # normalised on the way in
+
+    if "start_time" in fields or "end_time" in fields:
+        # merge the patch over the row's CURRENT times: changing only the end
+        # time still has to be checked against the start time already on file.
+        def _cell(name):
+            return ws.cell(row=row, column=headers.index(name) + 1).value \
+                if name in headers else ""
+        start = fields.get("start_time", _cell("start_time"))
+        end = fields.get("end_time", _cell("end_time"))
+        err = refuse_bad_times(start, end)
+        if err:
+            wb.close()
+            return {"ok": False, "error": err}
+
     changed = []
     for key, raw in fields.items():
         if key not in EDITABLE or key not in headers:
@@ -188,6 +247,9 @@ def _update_class(repo, event_id, fields):
         elif key == "active":
             value = bool(raw) if isinstance(raw, bool) else \
                 str(raw).strip().lower() not in ("false", "0", "no", "")
+        elif key in ("start_time", "end_time"):
+            # validated above; store canonical HH:MM so time_display can read it
+            value = "" if str(raw or "").strip() == "" else to_hhmm(raw)
         elif key == "event_date":
             value = str(raw).strip()
             # keep weekday in sync with a new date, unless caller set it explicitly
@@ -248,6 +310,18 @@ def _create_class(repo, fields):
     if not (region and topic and date):
         return {"ok": False, "error": "Region, topic and date are required to add a class."}
 
+    # Same guard as the edit path, before the id is even minted: a class that
+    # was born in the past is invisible to dealers and lands straight in the
+    # FSR grading queue, which is never what "add a class" meant.
+    parsed = parse_event_date(date)
+    if not parsed:
+        return {"ok": False, "error": "Date must be YYYY-MM-DD."}
+    err = refuse_past_date(parsed)
+    if err:
+        return {"ok": False, "error": err}
+    date = parsed.isoformat()
+    fields = {**fields, "event_date": date}
+
     # build a readable, unique event_id: region-firstword-YYYY-MM-DD
     first = _slugify(topic.split()[0] if topic.split() else "class")
     base = f"{_slugify(region)}-{first}-{date}"
@@ -292,6 +366,17 @@ def _create_class(repo, fields):
         "notes": str(fields.get("notes", "") or "").strip(),
         "status": "",
     }
+
+    # Times can arrive from three places (caller > sibling class > 09:00/14:00),
+    # so the pair is checked AFTER it's resolved — an inherited or defaulted
+    # pair has to be as legal as a typed one.
+    err = refuse_bad_times(defaults["start_time"], defaults["end_time"])
+    if err:
+        wb.close()
+        return {"ok": False, "error": err}
+    defaults["start_time"] = to_hhmm(defaults["start_time"])
+    defaults["end_time"] = to_hhmm(defaults["end_time"])
+
     ws.append([defaults.get(h, "") for h in headers])
 
     # A brand-new branch must also land in the `branches` sheet. That sheet is

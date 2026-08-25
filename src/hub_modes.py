@@ -11,9 +11,10 @@ Two rules make this real rather than cosmetic:
 
 1. Codes are checked HERE, on the server. The browser never holds the code list,
    so changing a code later means editing data/hub_codes.json — not shipping new
-   JavaScript. Today every mode is "MMMAAA" (see DEFAULT_CODE) because that is
-   what the team is using while we build; give each mode its own code in that
-   file and the app picks it up on the next request, no code change.
+   JavaScript. Admin and FSR have DIFFERENT codes (see DEFAULT_CODES) — an FSR
+   grades their branch, an admin can rewrite the schedule, and one shared code
+   made those the same privilege. Override either in that file and the app
+   picks it up on the next request, no code change.
 
 2. Restricted data is never in the public payload. The roster carries names and
    emails, so it is only ever returned by class_payload() AFTER the code for a
@@ -33,9 +34,19 @@ STATE_TZ = {"AR": "CST", "AL": "CST", "MS": "CST", "LA": "CST", "MO": "CST",
 
 STORE = DATA / "hub_codes.json"
 
-# What every mode's code is while the team is building. Real per-mode codes go
-# in data/hub_codes.json, which wins over this.
-DEFAULT_CODE = "MMMAAA"
+# What each mode's code is while the team is building. data/hub_codes.json wins
+# over this when it exists, so a code change never needs a deploy.
+#
+# FSR has its OWN code. Admin can edit a live class, cancel it, pull a roster
+# and mail dealers; an FSR grades their branch. One shared code made those the
+# same privilege — every trainer who could grade could also rewrite the
+# schedule. Separate codes is the whole point of separate modes.
+DEFAULT_CODES = {
+    "user": "",             # unused — the user lens is open to everyone
+    "admin": "CORP7000",
+    "fsr": "MAA",
+}
+DEFAULT_CODE = DEFAULT_CODES["admin"]      # legacy alias: admin's code
 
 MODES = {
     "user": {"key": "user", "label": "User", "sub": "Register your team",
@@ -48,8 +59,8 @@ MODES = {
 
 
 def _codes():
-    """{mode: CODE} — file first, DEFAULT_CODE for anything it doesn't set."""
-    out = {m: DEFAULT_CODE for m in MODES}
+    """{mode: CODE} — file first, DEFAULT_CODES for anything it doesn't set."""
+    out = {m: DEFAULT_CODES.get(m, DEFAULT_CODE) for m in MODES}
     if STORE.exists():
         try:
             saved = json.loads(STORE.read_text() or "{}")
@@ -73,7 +84,10 @@ def verify(mode, code):
         return False
     if not MODES[mode]["restricted"]:
         return True
-    return str(code or "").strip().upper() == _codes()[mode].upper()
+    want = _codes()[mode].strip()
+    if not want:
+        return False        # a restricted mode with no code configured opens for nobody
+    return str(code or "").strip().upper() == want.upper()
 
 
 def unlock(mode, code):
@@ -134,19 +148,26 @@ def class_payload(repo, event_id, mode, code):
 
 
 def class_status(repo, ev, event_id, roster):
-    """Where this class sits in its life cycle — the same rules the Admin Hub
-    grade sheet used, now computed once for the class page.
+    """Where this class sits in its life cycle, for the class page.
 
-      timing  : past | today | upcoming   (grading only opens once it's past)
-      grading : graded | needs_grading | n/a
+      status   : the pill — OPEN/TODAY/TOMORROW/NOT-GRADED/GRADED/NO SIGNUPS/ERASED
+      lifecycle: live | action | archive   (the derived archive)
+      timing   : past | today | upcoming   (grading only opens once it's past)
+      grading  : graded | needs_grading | n/a
+
+    status/lifecycle come from src.class_status — the SAME call the master list
+    makes — so a class cannot wear one label in the list and another on its own
+    page. timing/grading stay because the FSR grade sheet is wired to them.
     """
-    from datetime import datetime
-    today = str(datetime.now().date())
-    date = str(ev.get("event_date", ""))[:10]
-    timing = "past" if date < today else "today" if date == today else "upcoming"
+    from src.catalog import is_active
+    from src.class_status import describe
 
     total = len(roster)
     done = sum(1 for r in roster if r.get("attended") is not None)
+    st = describe(str(ev.get("event_date", ""))[:10], active=is_active(ev),
+                  registered=total, graded_count=done)
+    timing = st["timing"]
+
     if timing != "past" or not total:
         grading = "n/a"
     elif done == total:
@@ -155,6 +176,11 @@ def class_status(repo, ev, event_id, roster):
         grading = "needs_grading"
 
     return {
+        "status": st["status"],
+        "status_css": st["status_css"],
+        "lifecycle": st["lifecycle"],
+        "fsr_audit": st["fsr_audit"],
+        "fsr_audit_css": st["fsr_audit_css"],
         "timing": timing,
         "grading": grading,
         "graded_count": done,
@@ -233,16 +259,14 @@ def create_class(repo, mode, code, fields):
     if not date:
         return {"ok": False, "error": "Pick a date."}
 
-    from datetime import datetime
-    try:
-        datetime.strptime(date, "%Y-%m-%d")
-    except ValueError:
-        return {"ok": False, "error": "That date isn't valid."}
-
-    start = str(fields.get("start_time", "")).strip()
-    end = str(fields.get("end_time", "")).strip()
-    if start and end and end <= start:
-        return {"ok": False, "error": "End time has to be after the start time."}
+    # Date/time legality is not decided here — src.class_schedule owns it, so
+    # this screen and the workbook writer refuse the same things in the same
+    # words. (src.manage re-checks; this is only to fail before the branch and
+    # timezone questions below.)
+    from src.class_schedule import refuse_bad_schedule
+    err = refuse_bad_schedule(date, fields.get("start_time"), fields.get("end_time"))
+    if err:
+        return {"ok": False, "error": err}
 
     cap = str(fields.get("capacity", "")).strip()
     if cap:
@@ -415,28 +439,54 @@ def letter_pdf(repo, event_id, attendee_id, mode, code):
     return render_pdf(ctx), ctx
 
 
-def classes_overview(repo, mode, code):
-    """The master class table, admin lens: every class with the operational
-    numbers the public list deliberately hides — who's registered, how full it
-    is, and where each class sits in the grading life cycle."""
-    if mode != "admin" or not verify(mode, code):
-        return {"ok": False, "error": "Locked.", "need_code": True, "mode": "admin"}
+def classes_overview(repo, mode, code, branch=""):
+    """The master class table: every class, with the operational numbers the
+    public list deliberately hides — who's registered, how full it is, and the
+    one computed status that says where it sits right now.
 
-    from datetime import datetime
+    ONE table serves both restricted lenses. Admin gets the whole ledger; FSR
+    gets it filtered to a branch (see `branch`). Each mode is still verified
+    against its OWN code, so sharing the table is not sharing the key. This is
+    read-only; every write stays admin-only.
+
+    Cancelled classes are INCLUDED here (they read ERASED) — hiding them is how
+    a bad cancel goes unnoticed. The public feed still never sees them.
+    """
+    if mode not in ("admin", "fsr") or not verify(mode, code):
+        return {"ok": False, "error": "Locked.", "need_code": True, "mode": mode or "admin"}
+
     from src.catalog import event_view, is_active, load_catalog
+    from src.class_status import describe
     from src.reminders import reminder_stats
 
     events, _, _ = load_catalog()
-    today = str(datetime.now().date())
     rem = reminder_stats()          # one read of the campaign ledger for all classes
+    want_branch = str(branch or "").strip()
+    if want_branch.upper() in ("", "ALL"):
+        want_branch = ""
     rows = []
     for ev in events.values():
-        if not is_active(ev):
+        # no date cut and no active cut on purpose — finished and cancelled
+        # classes are exactly what this view exists to show
+        if want_branch and str(ev.get("branch", "")).strip() != want_branch:
             continue
         try:
             v = event_view(ev)
-        except (ValueError, TypeError, KeyError):
-            continue
+        except Exception as exc:  # noqa: BLE001
+            # A row that cannot be rendered must still be REPORTED. Skipping it
+            # is how a class silently disappears from every staff screen with
+            # no error and no count to notice it went. Emit the least we know.
+            eid = str(ev.get("event_id", "")).strip()
+            if not eid:
+                continue
+            v = {"event_id": eid, "topic": str(ev.get("topic", "")) or "(unreadable row)",
+                 "region": str(ev.get("region", "")), "branch": str(ev.get("branch", "")),
+                 "event_date": "", "event_date_raw": str(ev.get("event_date", "")),
+                 "date_display": "Unreadable", "date_short": "??", "time_display": "—",
+                 "trainer": str(ev.get("trainer", "")), "event_location": "",
+                 "class_address": "", "notes": "", "weekday_display": "",
+                 "date_info": "", "needs_info": True, "missing": ["row"],
+                 "bad_date": True, "broken": f"{type(exc).__name__}: {exc}"}
         eid = v["event_id"]
         roster = repo.class_grades(eid)
         try:
@@ -445,9 +495,19 @@ def classes_overview(repo, mode, code):
             cap = 0
         total = len(roster)
         done = sum(1 for r in roster if r.get("attended") is not None)
-        date = v["event_date"]
-        timing = "past" if date < today else "today" if date == today else "upcoming"
+        active = is_active(ev)
+        # the single derivation — src.class_status owns the whole vocabulary.
+        # event_date_raw, not event_date: a row whose date could not be parsed
+        # has event_date "" and MUST come back BAD DATE, not be quietly dated.
+        st = describe(v.get("event_date") or v.get("event_date_raw", ""),
+                      active=active, registered=total, graded_count=done)
+        timing = st["timing"]
+        # The display fields ride along with the operational ones so the master
+        # list can render straight from this response. It has to: the public
+        # /api/events feed has no past classes in it, and a finished class is
+        # exactly the one an FSR came here to grade.
         rows.append({
+            **v,
             "event_id": eid,
             "registered": total,
             "capacity": cap,
@@ -455,6 +515,18 @@ def classes_overview(repo, mode, code):
             "companies": len({r["company_name"] for r in roster if r["company_name"]}),
             "timing": timing,
             "graded_count": done,
+            "active": active,
+            # computed every response, stored nowhere: STATUS is the pill, and
+            # LIFECYCLE is the archive (live / action / archive)
+            "status": st["status"],
+            "status_css": st["status_css"],
+            "lifecycle": st["lifecycle"],
+            # the FSR-Audit column: is a grade owed here, done, or not a
+            # question yet. Derived from status, never stored.
+            "fsr_audit": st["fsr_audit"],
+            "fsr_audit_css": st["fsr_audit_css"],
+            "bad_date": bool(v.get("bad_date")),
+            "event_date_raw": v.get("event_date_raw", ""),
             "grading": ("n/a" if timing != "past" or not total
                         else "graded" if done == total else "needs_grading"),
             "closed_at": repo.class_closed_at(eid),
@@ -466,7 +538,20 @@ def classes_overview(repo, mode, code):
             "last_reminder": rem.get(eid, {}).get("last_sent_display", ""),
             "reminder_stages": rem.get(eid, {}).get("stages", []),
         })
-    return {"ok": True, "classes": rows, "branches": branch_options()}
+    # STRICT CHRONOLOGICAL ORDER. Not status buckets.
+    #
+    # Ranking by status quietly re-arranged the calendar: a finished class
+    # dropped to an "archive block" at the bottom no matter what month it was
+    # in, so August and October sat next to each other and the list stopped
+    # reading as a schedule. The status is already a column — it does not need
+    # to be the sort as well.
+    #
+    # A row whose date could not be read has event_date "" and therefore sorts
+    # FIRST. That is deliberate: it is the one row nobody should have to scroll
+    # to find.
+    rows.sort(key=lambda r: (r["event_date"] or "", r["event_id"]))
+    return {"ok": True, "classes": rows, "branches": branch_options(),
+            "branch": want_branch, "count": len(rows)}
 
 
 def _seats(repo, ev, event_id):
@@ -505,7 +590,7 @@ def _graded_roster(repo, event_id):
     return repo.class_grades(event_id)
 
 
-def save_class(repo, event_id, mode, code, fields):
+def save_class(repo, event_id, mode, code, fields, allow_past_restore=False):
     """Admin-mode class edit. The ADMIN code already proved authority here, so
     this does not ask again for the Edits & Updates code — it goes straight to
     src.manage.update_class, the one write path for the catalog (and the one
@@ -515,7 +600,7 @@ def save_class(repo, event_id, mode, code, fields):
     from src.audit import log
     from src.manage import update_class
     before = _edit_snapshot(event_id)
-    result = update_class(repo, event_id, fields or {})
+    result = update_class(repo, event_id, fields or {}, allow_past_restore)
     if result.get("ok"):
         log(mode, "class.update", event_id,
             {"changed": result.get("changed", []),
@@ -582,6 +667,30 @@ def send_class_reminders(repo, event_id, mode, code):
             "simulated": len(simulated), "failed": len(failed), "message": msg}
 
 
+_TRUE_WORDS = {"true", "1", "yes", "on"}
+_FALSE_WORDS = {"false", "0", "no", "off"}
+
+
+def _as_bool(value):
+    """Strict boolean, or None when the value does not clearly mean either.
+
+    bool("false") is True in Python, so a client sending the STRING "false"
+    would REINSTATE the class it meant to cancel. Cancel and reinstate are
+    opposite, dealer-visible actions — one hides a class, the other reopens
+    registration — so an unclear value is refused, never guessed at.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value if value is not None else "").strip().lower()
+    if text in _TRUE_WORDS:
+        return True
+    if text in _FALSE_WORDS:
+        return False
+    return None
+
+
 def set_class_active(repo, event_id, mode, code, active):
     """Cancel (active=False) or reinstate (active=True) one class.
 
@@ -595,7 +704,9 @@ def set_class_active(repo, event_id, mode, code, active):
     from src.audit import log
     from src.manage import set_active
     event_id = str(event_id).strip()
-    active = bool(active)
+    active = _as_bool(active)
+    if active is None:
+        return {"ok": False, "error": "Unclear 'active' value — send true or false."}
     result = set_active(repo, event_id, active)
     if result.get("ok"):
         log(mode, "class.reinstate" if active else "class.cancel", event_id,
@@ -614,12 +725,36 @@ def _edit_snapshot(event_id):
         return {}
 
 
+# What an admin gets told when they try to write a grade. One string, used by
+# the API and echoed by the browser, so the two never say different things.
+GRADE_IS_FSR_ONLY = "Start from FSR-VIEW to grade class"
+
+
 def save_grades(repo, event_id, mode, code, grades, graded_by=""):
-    """Persist per-student attendance / score / comment. FSR and Admin only."""
-    if mode not in ("fsr", "admin") or not verify(mode, code):
+    """Persist per-student attendance / score / comment. FSR ONLY.
+
+    Admin can SEE what's outstanding — the FSR-Audit column on the master list
+    is built for exactly that — but cannot write a grade. A grade is a
+    trainer's judgement about a student who stood in their room; an admin who
+    was not there has no basis for it, and a shared grade button is how one
+    ends up entered by whoever happened to be logged in.
+
+    Enforced here, not in the browser: hiding the button is a UI preference,
+    refusing the write is a rule.
+    """
+    if mode == "admin":
+        return {"ok": False, "error": GRADE_IS_FSR_ONLY, "fsr_only": True}
+    if mode != "fsr" or not verify(mode, code):
         return {"ok": False, "error": "Locked.", "need_code": True}
     if not str(event_id).strip():
         return {"ok": False, "error": "Missing event_id."}
+
+    # Closing a class is supposed to make its grades FINAL. It used to only
+    # disable a button, and the API went on accepting writes — so "closed"
+    # described the screen, not the data. Reopen is the way back in.
+    if repo.class_closed_at(event_id):
+        return {"ok": False, "error": "Class is closed. Reopen to change grades.",
+                "closed": True}
 
     clean = []
     for g in (grades or []):

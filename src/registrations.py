@@ -5,6 +5,8 @@ repository persists across the normalized tables. The flat 8-column export is
 rebuilt later from those tables (see src/export.py), so the snapshot fields here
 (`date_info`, `attendees_joined`) only need to match John's format.
 """
+import ast
+import json
 import re
 from datetime import datetime
 
@@ -16,14 +18,61 @@ from src.dealers import find_dealer
 _ATTENDEE_RE = re.compile(r"^\s*(?P<name>.*?)(?:\s*\((?P<role>[^()]*)\))?\s*$")
 
 
+# A person's name never contains a bracket or a brace. Apostrophes and hyphens
+# do (O'Brien, Smith-Jones), so those are left alone — only the characters that
+# can ONLY come from a serialized structure are treated as proof of one.
+_STRUCTURAL = re.compile(r"[\[\]{}]")
+
+
+def _as_people(raw):
+    """A list of attendee dicts, or None if `raw` isn't one.
+
+    Accepts the structured list the form posts, and also a JSON or Python-literal
+    STRING holding the same thing. A client that stringified its payload used to
+    fall through to the comma-splitter below, which chopped
+    "[{'name': 'Test Person', 'role': 'Technician'}]" into two fragments and
+    stored both as people. One real attendee became two garbage names.
+    """
+    if isinstance(raw, list):
+        return raw
+    text = str(raw or "").strip()
+    if not text.startswith(("[", "{")):
+        return None
+    for parse in (json.loads, ast.literal_eval):
+        try:
+            got = parse(text)
+        except (ValueError, SyntaxError, TypeError):
+            continue
+        if isinstance(got, dict):
+            got = [got]
+        if isinstance(got, list):
+            return got
+    return None
+
+
+def _clean_name(value):
+    """A usable name, or "" — anything still carrying structure is dropped.
+
+    This is the last gate before a name reaches the DB. Parsing above should
+    mean nothing structural ever gets here; this makes sure that a payload shape
+    nobody anticipated writes NO attendee rather than a corrupt one.
+    """
+    name = str(value or "").strip()
+    return "" if _STRUCTURAL.search(name) else name
+
+
 def _normalize_attendees(payload):
     """Prefer the structured attendees_list; fall back to parsing the joined string."""
-    raw = payload.get("attendees_list")
     out = []
-    if isinstance(raw, list):
-        for a in raw:
-            name = str((a or {}).get("name", "")).strip()
-            role = str((a or {}).get("role", "")).strip()
+    people = _as_people(payload.get("attendees_list"))
+    if people is None:
+        people = _as_people(payload.get("attendees"))
+    if people is not None:
+        for a in people:
+            if not isinstance(a, dict):
+                continue
+            name = _clean_name(a.get("name"))
+            role = str(a.get("role", "")).strip()
             if name:
                 out.append({"name": name, "role": role if role in ROLES else ""})
         return out
@@ -32,7 +81,7 @@ def _normalize_attendees(payload):
         return out
     for part in joined.split(","):
         m = _ATTENDEE_RE.match(part)
-        name = (m.group("name") or "").strip()
+        name = _clean_name(m.group("name"))
         role = (m.group("role") or "").strip()
         if name:
             out.append({"name": name, "role": role if role in ROLES else ""})
@@ -59,6 +108,11 @@ def build_registration(payload):
     errors = []
     if not event:
         errors.append("This class link is not active.")
+    elif str(event.get("event_date", ""))[:10] < str(datetime.now().date()):
+        # Past classes are on the master list now so the team can grade them,
+        # and an old QR code or bookmark still resolves. Neither may become a
+        # way to sign up for a class that already happened.
+        errors.append("This class has already taken place — registration is closed.")
     if not EMAIL_RE.match(email):
         errors.append("A valid Work Email is required.")
     if not company:

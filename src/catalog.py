@@ -40,7 +40,27 @@ def load_catalog():
 
 
 def _parse_date(iso):
-    return datetime.strptime(str(iso), "%Y-%m-%d").date()
+    """Strict: raises on anything unreadable. Callers that must not die use
+    safe_date() instead."""
+    return datetime.strptime(str(iso).strip()[:10], "%Y-%m-%d").date()
+
+
+def safe_date(value):
+    """date, or None. openpyxl hands back '2026-09-01 00:00:00' for a real date
+    cell — that is a good date, not a broken one, so it is normalised, not
+    rejected. Only a genuinely unreadable value returns None."""
+    try:
+        return _parse_date(value)
+    except (ValueError, TypeError):
+        return None
+
+
+def iso_date(value):
+    """'YYYY-MM-DD' for anything readable, else the raw text. This is what every
+    comparison against `today` must use — comparing a raw
+    '2026-09-01 00:00:00' string works by luck, and a raw '9/1/26' does not."""
+    d = safe_date(value)
+    return d.isoformat() if d else str(value or "").strip()
 
 
 def to_compact(t):
@@ -83,14 +103,19 @@ def time_display(ev):
 def _weekday_upper(ev):
     """Prefer the sheet's weekday column; fall back to deriving from the date."""
     wk = str(ev.get("weekday") or "").strip()
-    return wk.upper() if wk else _parse_date(ev["event_date"]).strftime("%A").upper()
+    if wk:
+        return wk.upper()
+    d = safe_date(ev.get("event_date"))
+    return d.strftime("%A").upper() if d else ""
 
 
 def build_date_info(ev):
     """Combined string EXACTLY in John's format:
     'WEDNESDAY, APRIL 29, 2026_9AM- 3PM_ FIT INSTALL & COMMISSIONING _ @ NASHVILLE BRANCH'
     """
-    d = _parse_date(ev["event_date"])
+    d = safe_date(ev.get("event_date"))
+    if not d:
+        return f"DATE UNREADABLE_ {ev.get('topic', '')} _ @ {ev.get('event_location', '')}"
     date_part = f"{_weekday_upper(ev)}, {MONTHS[d.month - 1].upper()} {d.day}, {d.year}"
     time_part = f"{to_compact(ev['start_time'])}- {to_compact(ev['end_time'])}"
     return f"{date_part}_{time_part}_ {ev['topic']} _ @ {ev['event_location']}"
@@ -112,13 +137,21 @@ def missing_info(ev):
 
 
 def event_view(ev):
-    """Display-friendly fields for one event."""
+    """Display-friendly fields for one event.
+
+    NEVER raises on a bad date. It used to, and the caller that mattered
+    (hub_modes.classes_overview) caught the exception and skipped the row — so
+    one unparseable cell made a whole class disappear from every staff screen
+    with nothing logged and no count to notice. A class with a broken date is
+    exactly the class somebody needs to see.
+    """
     from src.class_address import resolve
-    d = _parse_date(ev["event_date"])
+    d = safe_date(ev.get("event_date"))
     miss = missing_info(ev)
     trainer = str(ev.get("trainer", "")).strip()
     return {
         "found": True,
+        "bad_date": d is None,
         "event_id": ev["event_id"],
         # branch location from the table, unless a floating address overrides it
         "class_address": resolve(ev["event_id"], ev.get("event_location", "")),
@@ -132,10 +165,12 @@ def event_view(ev):
         "host_label": ev.get("host_label", ""),
         "event_location": ev.get("event_location", ""),
         "notes": ev.get("notes", ""),
-        "event_date": str(ev.get("event_date", ""))[:10],
+        # normalised, so every downstream `date < today` compares like with like
+        "event_date": d.isoformat() if d else "",
+        "event_date_raw": str(ev.get("event_date", "")).strip(),
         "weekday_display": _weekday_upper(ev).title(),
-        "date_display": f"{MONTHS[d.month - 1]} {d.day}, {d.year}",
-        "date_short": f"{MONTHS[d.month - 1][:3]} {d.day}",
+        "date_display": f"{MONTHS[d.month - 1]} {d.day}, {d.year}" if d else "Date unreadable",
+        "date_short": f"{MONTHS[d.month - 1][:3]} {d.day}" if d else "??",
         "time_display": time_display(ev),
         "date_info": build_date_info(ev),
         "needs_info": bool(miss),
@@ -163,16 +198,26 @@ def event_cache_row(ev):
     }
 
 
-def public_events():
+def list_events(include_past=False):
+    """Active classes as display views, newest-first by id.
+
+    Dealers only ever see today's and future classes. The team needs the
+    finished ones too — /admin and /manage are gone, so the main list is the
+    only place an FSR can reach a past class to grade it. That is what
+    include_past opens up, and it is never set from the public feed.
+
+    Cancelled classes (active=false) stay hidden either way.
+    """
     events, _, _ = load_catalog()
     today = str(datetime.now().date())
     out = []
     for ev in events.values():
         if not is_active(ev):
             continue
-        # dealers only see today's and future classes; finished ones live on in
-        # the admin hub for grading
-        if str(ev.get("event_date", ""))[:10] < today:
+        d = safe_date(ev.get("event_date"))
+        if d is None:
+            continue          # a class we cannot date is never offered to dealers
+        if not include_past and d.isoformat() < today:
             continue
         try:
             v = event_view(ev)
@@ -181,3 +226,8 @@ def public_events():
         out.append(v)
     out.sort(key=lambda v: v["event_id"])
     return out
+
+
+def public_events():
+    """The dealer-facing feed: today and later, never the finished classes."""
+    return list_events(include_past=False)

@@ -48,13 +48,15 @@ never sent the roster at all.
 | Lens | Sees | Code |
 |---|---|---|
 | **User** (blue) | Register your team | none — default |
-| **Admin** (orange) | Edit class, address, roster, flier, **Add a class**, reminder letters | `MMMAAA` |
-| **FSR** (green) | Roster, grading, close-out | `MMMAAA` |
+| **Admin** (orange) | Edit class, address, roster, flier, **Add a class**, reminder letters | `CORP7000` |
+| **FSR** (green) | Roster, grading, close-out | `MAA` |
 
 **ADMIN-VIEW** in the top nav (class list only) adds registered counts, status
 and reminder history to the master table, and reveals **ADD A CLASS**.
 
-Codes live in `data/hub_codes.json` — change them there, no code edit needed.
+Admin and FSR have **separate** codes and they do not cross: `CORP7000` never opens
+FSR, `MAA` never opens Admin. Codes live in `data/hub_codes.json` — change them
+there, no code edit needed.
 
 ## Where data lives
 
