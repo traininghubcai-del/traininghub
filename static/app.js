@@ -1329,13 +1329,34 @@ function bindForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || "Registration failed.");
+      // Read as TEXT first. res.json() on a proxy's HTML error page throws a
+      // parser error, and that parser error used to be what the dealer read —
+      // so a 502 from the edge looked identical to a bad form. Parse after we
+      // know we have a body, and keep the status for the message.
+      const body = await res.text();
+      let data = {};
+      try { data = body ? JSON.parse(body) : {}; } catch (_) { data = {}; }
+      if (!res.ok || data.error) {
+        throw new Error(data.error
+          || `The server couldn't complete the signup (error ${res.status}).`);
+      }
       setMsg("✓ " + data.message, "success");
       list.innerHTML = ""; addRow(false);
       form.contact_email.focus();
     } catch (err) {
-      setMsg(err.message + " If this keeps happening, contact your M&A branch.", "error");
+      // A dropped connection reaches here as a TypeError — Safari words it
+      // "Load failed", Chrome "Failed to fetch". Neither means anything to a
+      // dealer on a phone, and both used to be shown verbatim. Say what
+      // actually happened and what to do, and never claim the seat is lost:
+      // the request may well have landed before the connection dropped.
+      const offline = err instanceof TypeError
+        || /load failed|failed to fetch|networkerror/i.test(err.message || "");
+      setMsg(offline
+        ? "Couldn't reach the server, so we can't confirm this signup. Check your "
+          + "connection and try again — if it went through twice, your M&A branch can fix it."
+        : err.message + " If this keeps happening, contact your M&A branch.",
+        "error");
+      console.error("register failed:", err);
     } finally {
       submitBtn.disabled = false;
       submitBtn.textContent = "Submit Registration";
