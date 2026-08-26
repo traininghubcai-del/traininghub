@@ -249,7 +249,7 @@ class SqliteRepository(Repository):
             rows = con.execute(
                 """SELECT a.id AS attendee_id, a.name, a.role, a.is_returning,
                           a.attended, a.passed, a.score, a.comment,
-                          a.graded_by, a.graded_at,
+                          a.graded_by, a.graded_at, a.email AS attendee_email,
                           r.contact_email, r.branch,
                           c.name AS company_name
                    FROM registration_attendees a
@@ -262,6 +262,9 @@ class SqliteRepository(Repository):
                 "name": r["name"] or "",
                 "role": r["role"] or "",
                 "company_name": r["company_name"] or "",
+                # the student's own address, when they gave one — this is who got
+                # the personal confirmation, and staff need to see that it exists
+                "email": r["attendee_email"] or "",
                 "contact_email": r["contact_email"] or "",
                 "branch": r["branch"] or "",
                 "is_returning": bool(r["is_returning"]),
