@@ -41,6 +41,7 @@ class SqliteRepository(Repository):
                 ("registration_attendees", "comment", "TEXT"),
                 ("registration_attendees", "graded_by", "TEXT"),
                 ("registration_attendees", "graded_at", "TEXT"),
+                ("registration_attendees", "email", "TEXT"),
                 ("registrations", "contact_phone", "TEXT")):
             try:
                 con.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
@@ -86,17 +87,22 @@ class SqliteRepository(Repository):
             (name, account_number, now, now))
         return cur.lastrowid, False
 
-    def _get_or_create_person(self, con, name, role, company_id, now):
+    def _get_or_create_person(self, con, name, role, company_id, now, email=""):
         row = con.execute(
             "SELECT id FROM people WHERE name = ? AND company_id IS ?",
             (name, company_id)).fetchone()
         if row:
-            con.execute("UPDATE people SET last_seen = ?, role = COALESCE(NULLIF(?, ''), role) "
-                        "WHERE id = ?", (now, role, row["id"]))
+            # A blank email never erases one we already know. Someone re-registering
+            # a tech without retyping their address should not cost that tech their
+            # own confirmation next time.
+            con.execute("UPDATE people SET last_seen = ?, role = COALESCE(NULLIF(?, ''), role), "
+                        "email = COALESCE(NULLIF(?, ''), email) WHERE id = ?",
+                        (now, role, email, row["id"]))
             return row["id"], True
         cur = con.execute(
-            "INSERT INTO people (name, role, company_id, first_seen, last_seen) VALUES (?,?,?,?,?)",
-            (name, role, company_id, now, now))
+            "INSERT INTO people (name, role, email, company_id, first_seen, last_seen) "
+            "VALUES (?,?,?,?,?,?)",
+            (name, role, email or None, company_id, now, now))
         return cur.lastrowid, False
 
     # --- writes --------------------------------------------------------------
@@ -134,15 +140,17 @@ class SqliteRepository(Repository):
             reg_id = cur.lastrowid
             attendees, returning_count = [], 0
             for a in reg["attendees"]:
+                email = str(a.get("email") or "").strip()
                 person_id, returning = self._get_or_create_person(
-                    con, a["name"], a["role"], company_id, now)
+                    con, a["name"], a["role"], company_id, now, email)
                 con.execute(
                     """INSERT INTO registration_attendees
-                           (registration_id, person_id, name, role, is_returning)
-                       VALUES (?,?,?,?,?)""",
-                    (reg_id, person_id, a["name"], a["role"], int(returning)))
+                           (registration_id, person_id, name, role, email, is_returning)
+                       VALUES (?,?,?,?,?,?)""",
+                    (reg_id, person_id, a["name"], a["role"], email, int(returning)))
                 returning_count += int(returning)
-                attendees.append({"name": a["name"], "role": a["role"], "returning": returning})
+                attendees.append({"name": a["name"], "role": a["role"],
+                                  "email": email, "returning": returning})
             con.commit()
         finally:
             con.close()

@@ -302,7 +302,8 @@ def render_email(job):
       <tr><td style="padding:16px 20px;">
         <p style="margin:0 0 8px;font-family:{_FONT};font-weight:700;font-size:12px;
                   letter-spacing:.08em;color:#155a9f;text-transform:uppercase;">
-          Your registered team — {reg['company_name']}</p>
+          {("You're registered — " + job["greet_name"]) if job.get("greet_name")
+            else "Your registered team — " + reg['company_name']}</p>
         <p style="margin:0;font-family:Barlow,Arial,sans-serif;font-size:14px;color:#16222f;">
           {attendees}</p>
         <p style="margin:8px 0 0;font-family:Barlow,Arial,sans-serif;font-size:12px;color:#56697a;">
@@ -325,7 +326,7 @@ def render_email(job):
 
 # --- the registration receipt ------------------------------------------------------
 
-def confirmation_job(reg_id, reg, attendees):
+def confirmation_job(reg_id, reg, attendees, to="", greet_name="", suffix=""):
     """Build the stage-0 job for a registration that was just saved.
 
     Takes the values the request already has in hand rather than re-reading the
@@ -345,17 +346,20 @@ def confirmation_job(reg_id, reg, attendees):
     return {
         "reg_id": reg_id,
         # the flat shape the templates expect, same keys all_registrations_flat gives
-        "reg": {"contact_email": reg["contact_email"],
+        "reg": {"contact_email": to or reg["contact_email"],
                 "company_name": reg["company_name"],
                 "num_attending": reg["num_attending"],
                 "attendees": joined},
+        # Set only on a personal copy. render_email greets this person by name;
+        # the office copy leaves it empty and keeps the team-summary wording.
+        "greet_name": greet_name,
         "event": ev,
         "view": view,
         "class_date": datetime.strptime(str(ev["event_date"]), "%Y-%m-%d").date(),
         "stage": CONFIRM_STAGE,
         "send_on": date.today(),
         "subject": _subject(CONFIRM_STAGE, view),
-        "html_name": f"{reg_id:04d}_confirmation.html",
+        "html_name": f"{reg_id:04d}_confirmation{suffix}.html",
         "ics_name": f"{reg_id:04d}_invite.ics",
     }
 
@@ -369,18 +373,41 @@ def send_confirmation(reg_id, reg, attendees):
     ledger as the reminders and is auditable next to them.
     """
     try:
-        job = confirmation_job(reg_id, reg, attendees)
-        if job is None:
+        jobs = []
+        # One personal copy per attendee who gave an address. Deduplicated,
+        # because two techs sharing a shop address should not get two identical
+        # emails, and the office copy below would make it three.
+        seen = set()
+        for a in attendees or []:
+            addr = str(a.get("email") or "").strip()
+            if not addr or addr.lower() in seen:
+                continue
+            seen.add(addr.lower())
+            j = confirmation_job(reg_id, reg, attendees, to=addr,
+                                 greet_name=a.get("name", ""),
+                                 suffix=f"_{len(jobs) + 1}")
+            if j:
+                jobs.append(j)
+        # ...and always the copy for whoever registered the team, so the office
+        # keeps its receipt even when every attendee was mailed directly.
+        office = confirmation_job(reg_id, reg, attendees)
+        if office is None:
             return "SKIPPED — class not found or inactive"
-        # keep the copy the dealer was sent, so the outbox's html_file column
+        if str(reg.get("contact_email", "")).strip().lower() not in seen:
+            jobs.append(office)
+        if not jobs:
+            return "SKIPPED — no recipients"
+        # keep the copies that were sent, so the outbox's html_file column
         # points at something real for receipts the way it does for reminders
         try:
             EMAIL_OUT_DIR.mkdir(parents=True, exist_ok=True)
-            (EMAIL_OUT_DIR / job["html_name"]).write_text(render_email(job), encoding="utf-8")
+            for j in jobs:
+                (EMAIL_OUT_DIR / j["html_name"]).write_text(render_email(j), encoding="utf-8")
         except OSError:
             pass          # a read-only disk must not cost the dealer their receipt
-        send_jobs([job], date.today())
-        return job.get("status", "UNKNOWN")
+        send_jobs(jobs, date.today())
+        n = len(jobs)
+        return f"{jobs[0].get('status', 'UNKNOWN')} ({n} recipient{'s' if n != 1 else ''})"
     except Exception as e:  # noqa: BLE001 - a mail fault must not surface as a failed signup
         return f"FAILED — {type(e).__name__}: {e}"
 

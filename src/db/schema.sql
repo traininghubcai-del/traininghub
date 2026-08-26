@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS registration_attendees (
   person_id       INTEGER REFERENCES people(id),
   name            TEXT,
   role            TEXT,
+  email           TEXT,            -- optional; blank = covered by the office copy only
   is_returning    INTEGER,         -- 0 = new person, 1 = seen before (same company)
   -- per-student grading (filled by trainers in the admin hub; all NULL = ungraded)
   attended        INTEGER,         -- 0/1

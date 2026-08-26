@@ -1233,6 +1233,11 @@ function makeRow() {
   row.innerHTML =
     `<input type="text" class="att-name" placeholder="Full name" autocomplete="off" />` +
     `<select class="att-role">${opts}</select>` +
+    // Optional on purpose. A dealer signing up five techs often doesn't have
+    // five addresses to hand, and making this required would cost the signup.
+    // With an address that person gets their own confirmation; without one they
+    // are still covered by the copy sent to whoever registered the team.
+    `<input type="email" class="att-email" placeholder="Email (optional)" autocomplete="off" />` +
     `<button type="button" class="att-remove" aria-label="Remove attendee" title="Remove">✕</button>`;
   return row;
 }
@@ -1254,31 +1259,63 @@ function addRow(focus) {
 function setMsg(text, type) { msg.textContent = text; msg.className = "ma-form-msg" + (type ? " " + type : ""); }
 
 function collectAttendees() {
-  const empties = [], parts = [], list = [];
+  const empties = [], parts = [], list = [], badEmails = [];
   rows().forEach((r) => {
     const nameEl = r.querySelector(".att-name");
     const name = nameEl.value.trim();
     const role = r.querySelector(".att-role").value;
+    const emailEl = r.querySelector(".att-email");
+    const email = emailEl ? emailEl.value.trim() : "";
     if (!name) { empties.push(nameEl); return; }
+    // A typo'd address is worth stopping for — silently dropping it would mean
+    // that person quietly never gets their confirmation and nobody finds out.
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) badEmails.push(emailEl);
     parts.push(role ? `${name} (${role})` : name);
-    list.push({ name, role });
+    list.push({ name, role, email });
   });
-  return { count: parts.length, joined: parts.join(", "), list, empties };
+  return { count: parts.length, joined: parts.join(", "), list, empties, badEmails };
 }
 
 function validate(att) {
   const email = form.contact_email.value.trim();
+  // Each check carries the sentence the dealer should read. "Please complete the
+  // highlighted fields" was true and useless: on a phone the red outline is
+  // usually scrolled off screen, so the form looked like it was simply refusing
+  // to work. Name the field and the reason instead.
   const checks = [
-    [form.contact_email, !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)],
-    [form.company_name, !form.company_name.value.trim()],
-    [form.branch, !form.branch.value],
+    [form.contact_email, !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email),
+     email ? "That work email doesn't look right — check the address."
+           : "Enter the work email we should send the confirmation to."],
+    [form.company_name, !form.company_name.value.trim(), "Enter your company name."],
+    [form.branch, !form.branch.value, "Choose the M&A branch you buy from."],
   ];
   let ok = true;
-  checks.forEach(([el, bad]) => { el.classList.toggle("invalid", bad); if (bad) ok = false; });
+  let firstBad = null, attMsg = "";
+  checks.forEach(([el, bad, why]) => {
+    el.classList.toggle("invalid", bad);
+    if (bad && ok) { attMsg = why; firstBad = el; }
+    if (bad) ok = false;
+  });
   att.empties.forEach((el) => el.classList.add("invalid"));
-  let attMsg = "";
-  if (att.count === 0) { ok = false; attMsg = "Add at least one attendee with a name."; }
-  else if (att.empties.length) { ok = false; attMsg = "Enter a name for every attendee row (or remove the empty ones)."; }
+  (att.badEmails || []).forEach((el) => el.classList.add("invalid"));
+
+  if (att.count === 0) {
+    ok = false; attMsg = "Add at least one attendee with a name.";
+    firstBad = firstBad || att.empties[0];
+  } else if (att.empties.length) {
+    ok = false; attMsg = "Enter a name for every attendee row (or remove the empty ones).";
+    firstBad = firstBad || att.empties[0];
+  } else if ((att.badEmails || []).length) {
+    ok = false; attMsg = "One of the attendee email addresses doesn't look right.";
+    firstBad = firstBad || att.badEmails[0];
+  }
+  // Bring the offending field to the dealer rather than making them hunt for it.
+  if (!ok && firstBad) {
+    try {
+      firstBad.scrollIntoView({ behavior: "smooth", block: "center" });
+      firstBad.focus({ preventScroll: true });
+    } catch (_) { /* older browsers: the red outline still shows */ }
+  }
   return { ok, attMsg };
 }
 

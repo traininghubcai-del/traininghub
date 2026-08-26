@@ -50,6 +50,14 @@ def _as_people(raw):
     return None
 
 
+def _clean_email(value):
+    """A valid address, or "" — an attendee email is optional, so a malformed one
+    is dropped rather than failing a registration the dealer already completed.
+    The office copy still covers them."""
+    text = str(value or "").strip()
+    return text if EMAIL_RE.match(text) else ""
+
+
 def _clean_name(value):
     """A usable name, or "" — anything still carrying structure is dropped.
 
@@ -74,7 +82,8 @@ def _normalize_attendees(payload):
             name = _clean_name(a.get("name"))
             role = str(a.get("role", "")).strip()
             if name:
-                out.append({"name": name, "role": role if role in ROLES else ""})
+                out.append({"name": name, "role": role if role in ROLES else "",
+                            "email": _clean_email(a.get("email"))})
         return out
     joined = str(payload.get("attendees", "")).strip()
     if not joined:
@@ -84,7 +93,9 @@ def _normalize_attendees(payload):
         name = _clean_name(m.group("name"))
         role = (m.group("role") or "").strip()
         if name:
-            out.append({"name": name, "role": role if role in ROLES else ""})
+            # the joined string has never carried an address; blank means
+            # "no personal mail for this person", not "unknown"
+            out.append({"name": name, "role": role if role in ROLES else "", "email": ""})
     return out
 
 
