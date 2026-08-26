@@ -616,8 +616,8 @@ input::placeholder, textarea::placeholder { color: #9fb0c0; }
 /* attendee repeater */
 .ma-attendees-block { margin-top: 20px; }
 .ma-attendees-label { display: block; margin-bottom: 10px; }
-.ma-attendee-row { display: grid; grid-template-columns: 1fr 0.7fr auto; gap: 10px; align-items: center; margin-bottom: 10px; }
-.ma-attendee-row .att-name, .ma-attendee-row .att-role { margin: 0; }
+.ma-attendee-row { display: grid; grid-template-columns: 1fr 0.7fr 1fr auto; gap: 10px; align-items: center; margin-bottom: 10px; }
+.ma-attendee-row .att-name, .ma-attendee-row .att-role, .ma-attendee-row .att-email { margin: 0; }
 .att-remove {
   width: 40px; height: 44px; flex: none; cursor: pointer;
   background: #fff; color: var(--err); border: 1.5px solid var(--line); border-radius: 4px;
@@ -821,7 +821,7 @@ button.ma-addclass-link { background: none; cursor: pointer; }
 
 /* --- inputs: consistent radius, quiet default, confident focus --- */
 .ma-field input, .ma-field select, .ma-field textarea,
-.ma-attendee-row .att-name, .ma-attendee-row .att-role,
+.ma-attendee-row .att-name, .ma-attendee-row .att-role, .ma-attendee-row .att-email,
 .nc-field input, .nc-field select,
 .ma-admin-grid input, .ma-admin-grid select, .ma-admin-grid textarea,
 .ma-mode-lock input, .ma-confirm-row input, .ma-roster input,
@@ -830,11 +830,11 @@ button.ma-addclass-link { background: none; cursor: pointer; }
   transition:border-color .15s, box-shadow .15s, background .15s;
 }
 .ma-field input:hover, .ma-field select:hover, .ma-field textarea:hover,
-.ma-attendee-row .att-name:hover, .ma-attendee-row .att-role:hover,
+.ma-attendee-row .att-name:hover, .ma-attendee-row .att-role:hover, .ma-attendee-row .att-email:hover,
 .nc-field input:hover, .nc-field select:hover{ border-color:#b9c9da; }
 
 .ma-field input:focus, .ma-field select:focus, .ma-field textarea:focus,
-.ma-attendee-row .att-name:focus, .ma-attendee-row .att-role:focus,
+.ma-attendee-row .att-name:focus, .ma-attendee-row .att-role:focus, .ma-attendee-row .att-email:focus,
 .ma-admin-grid input:focus, .ma-admin-grid select:focus, .ma-admin-grid textarea:focus,
 .ma-mode-lock input:focus, .ma-confirm-row input:focus, .ma-roster input:focus{
   outline:none; border-color:var(--blue); box-shadow:var(--ring); background:#fff;
@@ -842,7 +842,7 @@ button.ma-addclass-link { background: none; cursor: pointer; }
 .nc-field input:focus, .nc-field select:focus{
   outline:none; border-color:#e8a13a; box-shadow:0 0 0 3px rgba(232,161,58,.20);
 }
-.ma-field input.invalid, .att-name.invalid{
+.ma-field input.invalid, .att-name.invalid, .att-email.invalid{
   border-color:var(--err); box-shadow:0 0 0 3px rgba(192,57,43,.14);
 }
 
@@ -914,7 +914,7 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
   .ma-admin-grid input, .ma-admin-grid select, .ma-admin-grid textarea,
   .ma-mode-lock input, .ma-confirm-row input,
   .ma-roster input, .ma-reg-search, .ma-reg-month,
-  .att-name, .att-role { font-size: 16px !important; }
+  .att-name, .att-role, .att-email { font-size: 16px !important; }
 }
 
 /* --- tap targets: 44px minimum on anything you press --- */
@@ -962,6 +962,7 @@ body.admin-lens .ma-reg-row:hover{ box-shadow:inset 3px 0 0 #e8a13a; }
     border: 1px solid var(--line); background: #fbfcfe;
   }
   .ma-attendee-row .att-name { grid-column: 1 / -1; }
+  .ma-attendee-row .att-email { grid-column: 1 / -1; }
   .ma-attendee-row .att-role { grid-column: 1; }
   .ma-attendee-row .att-remove { grid-column: 2; }
 
