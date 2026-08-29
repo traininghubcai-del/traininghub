@@ -4,6 +4,27 @@
 
 const ROLES = ["Technician", "Inside Sales", "Outside Sales", "Owner"];
 
+// ---------- branch display labels (COSMETIC ONLY) ----------
+// TEMPORARY. The option's *value* stays the raw catalog string — signup,
+// validation, class lookup and every staff filter still match the Excel/DB
+// text. This map only changes what the dealer reads in the dropdown.
+// When the catalog is renamed for real, delete this map, don't grow it.
+const BRANCH_LABELS = {
+  "101- Nashville": "Nashville, TN",
+  "107- Murfreesboro": "Murfreesboro, TN",
+  "125- Columbia": "Columbia, TN",
+  "132- Cookeville": "Cookeville, TN",
+  "150- Chattanooga": "Chattanooga, TN",
+  "160- Knoxville": "Knoxville, TN",
+  "210- Huntsville": "Huntsville, AL",
+  "220- Birmingham": "Birmingham, AL",
+  "310- Memphis": "Memphis, TN",
+  "410- Little Rock": "Little Rock, AR",
+};
+
+// Hidden from the dealer dropdown unless the class itself is held there.
+const BRANCH_HIDE = new Set(["San Antonio, TX"]);
+
 const gate = document.getElementById("gate");
 const gateInner = document.getElementById("gate-inner");
 const classPage = document.getElementById("class-page");
@@ -1191,10 +1212,12 @@ async function loadDealers() {
   } catch (e) { /* typeahead is sugar — form still works without it */ }
 }
 
-function fillBranches(branches) {
+function fillBranches(branches, eventBranch) {
   (branches || []).forEach((b) => {
+    if (BRANCH_HIDE.has(b) && b !== eventBranch) return;
     const o = document.createElement("option");
-    o.value = b; o.textContent = b;
+    o.value = b;                           // raw catalog string — do not prettify
+    o.textContent = BRANCH_LABELS[b] || b; // label only
     branchSelect.appendChild(o);
   });
 }
@@ -1213,7 +1236,7 @@ async function loadEvent(eventId) {
     revealClassPage();
     bindForm();
     fillEvent(data);
-    fillBranches(data.branches);
+    fillBranches(data.branches, data.branch);
     loadDealers();
     addRow(false); // Attendee 1
     bindModeLock();
