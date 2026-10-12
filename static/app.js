@@ -884,7 +884,7 @@ function drawNewClassForm() {
       <div class="nc-field"><label>Date <span class="req">*</span></label>
         <input id="nc-date" type="date" min="${todayISO()}" /></div>
       <div class="nc-field"><label>Capacity</label>
-        <input id="nc-cap" type="number" min="1" value="20" /></div>
+        <input id="nc-cap" type="number" min="1" value="35" /></div>
       <div class="nc-field"><label>Start</label><input id="nc-start" type="time" value="09:00" /></div>
       <div class="nc-field"><label>End</label><input id="nc-end" type="time" value="12:00" /></div>
       <div class="nc-field full"><label>Trainer (FSR)</label>
